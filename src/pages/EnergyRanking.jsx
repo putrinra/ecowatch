@@ -34,7 +34,7 @@ export default function EnergyRanking() {
       data: ['Last year', 'Current'],
       textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' }
     },
-    grid: { left: '3%', right: '10%', bottom: '10%', containLabel: true },
+    grid: { top: '2%',left: '3%', right: '10%', bottom: '10%', containLabel: true },
     xAxis: [
       {
         type: 'value',
