@@ -3,7 +3,7 @@ import { Card, Select, DatePicker, Button, Space, Table } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
 import { useOutletContext } from 'react-router-dom';
-import '../style/Demand.css'; // Memanggil file CSS
+import '../style/Demand.css';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -14,14 +14,7 @@ export default function DemandPage() {
 
   const demandOption = {
     tooltip: { trigger: 'axis' },
-    
-    grid: {
-      left: '3%',
-      right: '3%',
-      bottom: '50px',
-      containLabel: true
-    },
-
+    grid: {top: '13%', left: '3%', right: '3%', bottom: '50px', containLabel: true},
     dataZoom: [{ type: 'inside', start: 0, end: 100, height: 15 }, { type: 'slider', bottom: 0, height: 20 }],
     xAxis: { 
       type: 'category', 
@@ -66,7 +59,6 @@ export default function DemandPage() {
   return (
     <div className="demand-container">
       
-      {/* Catatan: bodyStyle tetap dipakai karena properti bawaan dari Ant Design Card */}
       <Card bodyStyle={{ padding: '10px 24px' }}>
         <div className="demand-filter-wrapper">
           <Space>
@@ -91,7 +83,7 @@ export default function DemandPage() {
           dataSource={tableData} 
           columns={columns} 
           size="small" 
-          scroll={{ y: 150 }} 
+          scroll={{ y: 200 }} 
           pagination={{
             showSizeChanger: true, 
             showQuickJumper: true, 
