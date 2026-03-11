@@ -52,12 +52,7 @@ export default function AreaUsagePage() {
     } else {
       fetchData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // =========================================================
-  // BAGIAN INI YANG SEBELUMNYA TERTINGGAL / TERHAPUS
-  // =========================================================
   const xAxisData = [...new Set(chartData.map(d => d.timestamp))].sort();
   const tags = [...new Set(chartData.map(d => d.tag_name))];
 
@@ -71,45 +66,17 @@ export default function AreaUsagePage() {
       return item ? item.value_kwh : 0;
     })
   }));
-  // =========================================================
 
   const areaUsageOption = {
-    tooltip: {
-      trigger: "axis"
-    },
-    legend: {
-      bottom: 0,
-      type: "scroll",
-      textStyle: {
+    tooltip: {trigger: "axis"},
+    legend: {bottom: 0, type: "scroll", textStyle: {color: isDarkMode ? "#d9d9d9" : "#595959"}},
+    grid: {top: "5%", left: "3%", right: "4%", bottom: "80px", containLabel: true},
+    dataZoom: [{type: "slider", bottom: 35, height: 15}, {type: "inside"}],
+    xAxis: {type: "category", data: xAxisData, axisLabel: {
         color: isDarkMode ? "#d9d9d9" : "#595959"
       }
     },
-    grid: {
-      left: "3%",
-      right: "4%",
-      bottom: "80px",
-      containLabel: true
-    },
-    dataZoom: [
-      {
-        type: "slider",
-        bottom: 35,
-        height: 15
-      },
-      {
-        type: "inside"
-      }
-    ],
-    xAxis: {
-      type: "category",
-      data: xAxisData, // Sekarang variabel ini sudah ada!
-      axisLabel: {
-        color: isDarkMode ? "#d9d9d9" : "#595959"
-      }
-    },
-    yAxis: {
-      type: "value",
-      name: "kWh",
+    yAxis: {type: "value", name: "kWh",
       nameTextStyle: {
         color: isDarkMode ? "#d9d9d9" : "#595959"
       },
@@ -117,7 +84,7 @@ export default function AreaUsagePage() {
         color: isDarkMode ? "#d9d9d9" : "#595959"
       }
     },
-    series: series // Sekarang variabel ini sudah ada!
+    series: series
   };
 
   return (
