@@ -23,6 +23,7 @@ const menuItems = [
     children: [
       { key: '/energy-ranking', label: 'Energy Ranking' },
       { key: '/energy-flow', label: 'Energy Flow' },
+      { key: '/loss-analysis', label: 'Loss Analysis' },
     ],
   },
   {
@@ -40,20 +41,65 @@ const treeData = [
     key: '0-0',
     children: [
       {
-        title: 'ELECTRIC_TRANSFORMER',
+        title: 'RAC',
         key: '0-0-0',
         children: [
           { title: 'LVMDP_RAC', key: '0-0-0-0' },
-          { title: 'LVMDP_NR1', key: '0-0-0-1' },
-          { title: 'LVMDP_NR2', key: '0-0-0-2' },
         ],
       },
       {
-        title: 'ELECTRIC_AIR_COMP',
+        title: 'NR1',
         key: '0-0-1',
         children: [
-          { title: 'SCREW_COMPRESSOR1', key: '0-0-1-0' },
+          { title: 'LVMDP_NR1', key: '0-0-1-0' },
         ],
+      },
+      {
+        title: 'NR2',
+        key: '0-0-2',
+        children: [
+          { title: 'LVMDP_NR2', key: '0-0-2-0' },
+        ],
+      },
+      {
+        title: 'UT_NEW',
+        key: '0-0-3',
+        children: [
+          { title: 'LVMDP_UT_NEW', key: '0-0-3-0' },
+        ],
+      },
+      {
+        title: 'UTILITY',
+        key: '0-0-4',
+        children: [
+          { title: 'LVMDP_UTILITY', key: '0-0-4-0' },
+        ],
+      },
+    ],
+  },
+  {
+    title: 'ELECTRIC_TRANSFORMER',
+    key: '0-1',
+    children: [
+      {
+        title: 'LVMDP_RAC',
+        key: '0-1-0',
+      },
+      {
+        title: 'LVMDP_NR1',
+        key: '0-1-1',
+      },
+      {
+        title: 'LVMDP_NR2',
+        key: '0-1-2',
+      },
+      {
+        title: 'LVMDP_UT_NEW',
+        key: '0-1-3',
+      },
+      {
+        title: 'LVMDP_UTILITY',
+        key: '0-1-4',
       },
     ],
   },
@@ -155,7 +201,7 @@ export default function MainLayout() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <Button 
+            <Button
               type="text" 
               icon={<MenuIcon size={24} color={isDarkMode ? '#ffffff' : '#000000'} />} 
               onClick={() => setCollapsed(!collapsed)} 
@@ -215,13 +261,13 @@ export default function MainLayout() {
             style={{ 
               backgroundColor: isDarkMode ? '#141414' : '#ffffff',
               borderRight: isDarkMode ? '1px solid #303030' : '1px solid #f0f0f0',
-              paddingTop: '16px',
+              paddingTop: '10px',
               zIndex: 10,
               height: '100%',     
               overflowY: 'auto'   
             }}
-            collapsible          
-            trigger={null}       
+            collapsible
+            trigger={null}
             collapsed={collapsed}
           >
             <Menu
@@ -236,7 +282,7 @@ export default function MainLayout() {
 
           {showAreaSidebar && (
             <Sider 
-              width={270} 
+              width={245} 
               theme={isDarkMode ? 'dark' : 'light'} 
               style={{ 
                 padding: '16px', 
