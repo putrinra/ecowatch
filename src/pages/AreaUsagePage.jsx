@@ -106,6 +106,7 @@ export default function AreaUsagePage() {
               <Option value="Month">Month</Option>
               <Option value="Day">Day</Option>
               <Option value="Hour">Hour</Option>
+              <Option value="Minute">Minute</Option>
             </Select>
           </Space>
 
