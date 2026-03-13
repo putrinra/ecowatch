@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'; // ✅ Tambah useEffect
+import React, { useState, useEffect } from 'react';
 import { Card, Select, Button, Space, Typography, Progress, Row, Col } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useOutletContext } from 'react-router-dom';
-import axios from 'axios'; // ✅ Tambah axios untuk memanggil API
+import axios from 'axios';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -10,17 +10,11 @@ const { Title, Text } = Typography;
 export default function ItemSummary() {
   const { isDarkMode } = useOutletContext();
   
-  // =========================================================
-  // 1. SEMUA HOOKS & STATE HARUS BERADA DI PALING ATAS
-  // =========================================================
   const [selectedArea, setSelectedArea] = useState("Regional");
   const [energyType, setEnergyType] = useState('electricity');
   const [barDataThisYear, setBarDataThisYear] = useState(new Array(12).fill(0));
   const [loadingBar, setLoadingBar] = useState(false);
 
-  // =========================================================
-  // 2. FUNGSI UNTUK MENGAMBIL DATA DARI DATABASE
-  // =========================================================
   const fetchBarData = (areaName) => {
     setLoadingBar(true);
     const currentYear = new Date().getFullYear();
@@ -50,23 +44,18 @@ export default function ItemSummary() {
       });
   };
 
-  // Pemicu otomatis saat area terpilih berubah
   useEffect(() => {
     if (selectedArea && selectedArea !== "Regional") {
       fetchBarData(selectedArea);
     }
   }, [selectedArea]);
 
-  // Handler klik pie chart
   const onEvents = {
     'click': (params) => {
       setSelectedArea(params.name);
     }
   };
 
-  // =========================================================
-  // 3. DATA & KONFIGURASI GRAFIK
-  // =========================================================
   const rankingData = [
     { name: '1. TURBO_ATLAS3', value: 512.14, percent: 100 },
     { name: '2. TURBO_ATLAS2', value: 411.75, percent: 80 },
@@ -131,12 +120,8 @@ export default function ItemSummary() {
     ]
   };
 
-  // =========================================================
-  // 4. TAMPILAN (JSX)
-  // =========================================================
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-      {/* Menggunakan styles={{ body: ... }} agar tidak ada warning deprecated */}
       <Card styles={{ body: { padding: '10px 24px' } }}>
         <Space wrap>
           <span>Area</span>
