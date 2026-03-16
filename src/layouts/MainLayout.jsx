@@ -41,7 +41,20 @@ const treeData = [
     key: '0-0',
     children: [
       { title: 'RAC', key: '0-0-0', children: [{ title: 'LVMDP_RAC', key: '0-0-0-0' }] },
-      { title: 'NR1', key: '0-0-1', children: [{ title: 'LVMDP_NR1', key: '0-0-1-0' }] },
+      { title: 'NR1', key: '0-0-1',
+        children: [
+          { title: 'LVMDP_NR1', key: '0-0-1-0' },
+          { title: 'DB1', key: '0-0-1-1' },
+          { title: 'DB2', key: '0-0-1-2' },
+          { title: 'DB3', key: '0-0-1-3', children: [
+            { title: 'CHAMBER_AR1', key: '0-0-1-3-0' },
+            { title: 'LP_OFFICE_REFF_2', key: '0-0-1-3-1' },
+            { title: 'H_PRESS_MC1', key: '0-0-1-3-2' },
+            { title: 'V_F_MALE_C_NR1', key: '0-0-1-3-3' },
+            { title: 'V_F_FEMALE_B_NR1', key: '0-0-1-3-4' },
+            { title: 'V_F_FEMALE_A_NR1', key: '0-0-1-3-5' },
+          ] },
+        ] },
       { title: 'NR2', key: '0-0-2', children: [{ title: 'LVMDP_NR2', key: '0-0-2-0' }] },
       { title: 'UT_NEW', key: '0-0-3', children: [{ title: 'LVMDP_UT_NEW', key: '0-0-3-0' }] },
       { title: 'UTILITY', key: '0-0-4', children: [{ title: 'LVMDP_UTILITY', key: '0-0-4-0' }] },
@@ -86,7 +99,7 @@ export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(false); 
   const [currentUser, setCurrentUser] = useState('');
 
-  // STATE UNTUK MENGINGAT NAMA AREA YANG DICENTANG
+  //checkedKeys
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [checkedAreaNames, setCheckedAreaNames] = useState([]); 
