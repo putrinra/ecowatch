@@ -45,8 +45,8 @@ export default function EnergyRanking() {
     }
 
     try {
-      const resCur = await axios.get(`http://localhost:5000/energy?interval=Month&start=${startCur}&end=${endCur}&areas=${mainAreas}`);
-      const resComp = await axios.get(`http://localhost:5000/energy?interval=Month&start=${startComp}&end=${endComp}&areas=${mainAreas}`);
+      const resCur = await axios.get(`http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${startCur}&end=${endCur}&areas=${mainAreas}`);
+      const resComp = await axios.get(`http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${startComp}&end=${endComp}&areas=${mainAreas}`);
 
       const areaList = mainAreas.split(',');
       const curVals = [];
