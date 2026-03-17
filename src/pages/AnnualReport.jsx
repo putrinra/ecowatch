@@ -35,7 +35,7 @@ export default function AnnualReport() {
   const fetchAnnualData = () => {
     setLoading(true);
     
-    let url = `http://localhost:5000/energy?interval=Month&start=${selectedYear}-01-01&end=${selectedYear}-12-31`;
+    let url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${selectedYear}-01-01&end=${selectedYear}-12-31`;
 
     if (checkedAreaNames && checkedAreaNames.length > 0) {
       url += `&areas=${checkedAreaNames.join(",")}`;
