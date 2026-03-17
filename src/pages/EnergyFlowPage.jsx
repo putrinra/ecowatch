@@ -36,7 +36,7 @@ export default function EnergyFlowPage() {
         end = dateRange[1].format('YYYY-MM-DD');
       }
 
-      const url = `http://localhost:5000/energy?interval=Month&start=${start}&end=${end}`;
+      const url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${start}&end=${end}`;
       const response = await axios.get(url);
       const rawData = response.data;
 
