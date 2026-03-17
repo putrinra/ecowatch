@@ -24,7 +24,7 @@ export default function AreaUsagePage() {
   const fetchData = () => {
     setLoading(true);
 
-    let url = `http://localhost:5000/energy?interval=${intervalWaktu}`;
+    let url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=${intervalWaktu}`;
 
     if (dateRange && dateRange.length === 2) {
       const startDate = dateRange[0].format("YYYY-MM-DD");
