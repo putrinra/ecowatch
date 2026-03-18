@@ -11,7 +11,8 @@ export default function EnergyFlowPage() {
   const { isDarkMode } = useOutletContext();
   const [loading, setLoading] = useState(false);
   const [sankeyData, setSankeyData] = useState({ nodes: [], links: [] });
-  const [dateRange, setDateRange] = useState([]);
+  
+  const [selectedDates, setSelectedDates] = useState([]);
 
   const getColorByArea = (name) => {
     if (!name) return '#8c8c8c';
@@ -31,12 +32,12 @@ export default function EnergyFlowPage() {
       let start = `${currentYear}-01-01`;
       let end = `${currentYear}-12-31`;
 
-      if (dateRange && dateRange.length === 2) {
-        start = dateRange[0].format('YYYY-MM-DD');
-        end = dateRange[1].format('YYYY-MM-DD');
+      if (selectedDates && selectedDates.length === 2 && selectedDates[0] !== "") {
+        start = selectedDates[0];
+        end = selectedDates[1];
       }
 
-      const url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${start}&end=${end}`;
+      const url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=Day&start=${start}&end=${end}`;
       const response = await axios.get(url);
       const rawData = response.data;
 
@@ -153,7 +154,7 @@ export default function EnergyFlowPage() {
           </Select>
 
           <span style={{ marginLeft: '16px' }}>Time</span>
-          <RangePicker onChange={(dates) => setDateRange(dates)} />
+          <RangePicker onChange={(dates, dateStrings) => setSelectedDates(dateStrings)} />
           
           <Button type="primary" onClick={fetchSankeyData} loading={loading}>
             Search
@@ -164,6 +165,7 @@ export default function EnergyFlowPage() {
       <Card bordered={false} styles={{ body: { padding: '24px' } }}>
         <Spin spinning={loading}>
           <ReactECharts 
+            notMerge={true}
             option={sankeyOption} 
             theme={isDarkMode ? 'dark' : 'light'} 
             style={{ height: '750px', width: '100%' }} 
