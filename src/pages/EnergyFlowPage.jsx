@@ -100,7 +100,7 @@ export default function EnergyFlowPage() {
 
       setSankeyData({ nodes, links });
     } catch (error) {
-      console.error("Gagal memproses data Sankey:", error);
+      console.error("Failed to process Sankey data:", error);
     } finally {
       setLoading(false);
     }
