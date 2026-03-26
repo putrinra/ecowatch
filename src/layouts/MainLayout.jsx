@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Input, Tree, Button, Typography, ConfigProvider, theme, Dropdown } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Sun, Moon, Search, Menu as MenuIcon, Settings, User, LogOut, Home, Bell } from 'lucide-react'; 
+import { Sun, Moon, Search, Menu as MenuIcon, Settings, User, LogOut, Home, Bell, SlidersHorizontal } from 'lucide-react'; 
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -99,7 +99,6 @@ export default function MainLayout() {
   const [collapsed, setCollapsed] = useState(false); 
   const [currentUser, setCurrentUser] = useState('');
 
-  //checkedKeys
   const [checkedKeys, setCheckedKeys] = useState([]);
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [checkedAreaNames, setCheckedAreaNames] = useState([]); 
@@ -151,9 +150,15 @@ export default function MainLayout() {
             <Button type="text" icon={<MenuIcon size={24} color={isDarkMode ? '#ffffff' : '#000000'} />} onClick={() => setCollapsed(!collapsed)} style={{ padding: 1 }} />
             <Title level={4} style={{ margin: 0, color: isDarkMode ? '#ffffff' : '#595959', fontWeight: 500 }}>Energy Management System</Title>
           </div>
+          
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <LiveClock isDarkMode={isDarkMode} />
             <Button type="text" shape="circle" icon={isDarkMode ? <Sun size={20} color="#ffffff" /> : <Moon size={20} color="#595959" />} onClick={() => setIsDarkMode(!isDarkMode)} />
+            <Button 
+              type="text" 
+              shape="circle" 
+              icon={<SlidersHorizontal size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} 
+            />
             <Button type="text" shape="circle" icon={<Bell size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
             <Dropdown menu={{ items: settingsMenuItems }} placement="bottomRight" trigger={['click']}>
               <Button type="text" shape="circle" icon={<Settings size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
