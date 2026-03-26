@@ -73,7 +73,7 @@ export default function EnergyRanking() {
       setComparisonData(compVals);
       setGrowthRates(growthVals);
     } catch (err) {
-      console.error("Gagal ambil data:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
