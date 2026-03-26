@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Select, DatePicker, Button, Space, Spin } from 'antd';
+import { Card, Select, DatePicker, Button, Space, Spin, message } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+
+const LOSS_PERCENTAGE = 0; 
 
 export default function EnergyFlowPage() {
   const { isDarkMode } = useOutletContext();
@@ -16,13 +18,13 @@ export default function EnergyFlowPage() {
 
   const getColorByArea = (name) => {
     if (!name) return '#8c8c8c';
-    if (name.includes('MAIN')) return '#a6a6a6';
-    if (name.includes('NR1')) return '#52c41a';
-    if (name.includes('NR2')) return '#ffa940';
-    if (name.includes('UT_NEW') || name.includes('TURBO')) return '#ffc53d';
-    if (name.includes('UTILITY') || name.includes('COMPRESSOR')) return '#ff85c0';
-    if (name.includes('RAC')) return '#36cfc9';
-    return '#5cdbd3'; 
+    if (name.includes('MAIN')) return '#595959'; 
+    if (name.includes('NR1')) return '#389e0d';  
+    if (name.includes('NR2')) return '#d46b08';  
+    if (name.includes('UT_NEW') || name.includes('TURBO')) return '#d48806'; 
+    if (name.includes('UTILITY') || name.includes('COMPRESSOR')) return '#c41d7f'; 
+    if (name.includes('RAC')) return '#08979c';  
+    return '#8c8c8c'; 
   };
 
   const fetchSankeyData = async () => {
@@ -37,7 +39,7 @@ export default function EnergyFlowPage() {
         end = selectedDates[1];
       }
 
-      const url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=Day&start=${start}&end=${end}`;
+      const url = `http://localhost:5000/energy?interval=Day&start=${start}&end=${end}`;
       const response = await axios.get(url);
       const rawData = response.data;
 
@@ -45,13 +47,13 @@ export default function EnergyFlowPage() {
       
       rawData.forEach(item => {
         if (!nodeDict[item.tag_name]) {
-          nodeDict[item.tag_name] = { name: item.tag_name, parent: item.parent_name, directVal: 0, children: [] };
+          nodeDict[item.tag_name] = { name: item.tag_name, parent: item.parent_name, directVal: 0, children: [], totalFlow: 0, depth: 0 };
         }
         nodeDict[item.tag_name].directVal += item.value_kwh;
 
         if (item.parent_name) {
           if (!nodeDict[item.parent_name]) {
-            nodeDict[item.parent_name] = { name: item.parent_name, parent: null, directVal: 0, children: [] };
+            nodeDict[item.parent_name] = { name: item.parent_name, parent: null, directVal: 0, children: [], totalFlow: 0, depth: 0 };
           }
           if (!nodeDict[item.parent_name].children.includes(item.tag_name)) {
             nodeDict[item.parent_name].children.push(item.tag_name);
@@ -60,47 +62,73 @@ export default function EnergyFlowPage() {
         }
       });
 
-      const getTotalValue = (nodeName) => {
+      const calculateRealisticFlow = (nodeName, visitedNodes = new Set(), currentDepth = 0) => {
         const node = nodeDict[nodeName];
         if (!node) return 0;
+
+        if (visitedNodes.has(nodeName)) return 0; 
+        visitedNodes.add(nodeName); 
+        
+        node.depth = currentDepth;
+
         let sum = node.directVal;
         node.children.forEach(childName => {
-          sum += getTotalValue(childName);
+          sum += calculateRealisticFlow(childName, new Set(visitedNodes), currentDepth + 1); 
         });
+        
+        node.totalFlow = sum;
         return sum;
       };
 
+      Object.values(nodeDict).forEach(node => {
+        if (!node.parent) calculateRealisticFlow(node.name, new Set(), 0);
+      });
+
       const nodes = [];
       const links = [];
+      const addedNodes = new Set();
 
-      Object.values(nodeDict).forEach(node => {
-        const totalNodeValue = getTotalValue(node.name);
+      const addNodeDFS = (nodeName) => {
+        if (addedNodes.has(nodeName)) return;
+        const node = nodeDict[nodeName];
+        if (!node || node.totalFlow <= 0) return;
 
-        if (totalNodeValue > 0) {
-          nodes.push({ 
-            name: node.name, 
-            value: Math.round(totalNodeValue),
-            itemStyle: { color: getColorByArea(node.name) } 
-          });
+        nodes.push({ 
+          name: node.name, 
+          value: Math.round(node.totalFlow),
+          depth: node.depth,
+          itemStyle: { color: getColorByArea(node.name) } 
+        });
+        addedNodes.add(nodeName);
 
-          if (node.parent && nodeDict[node.parent]) {
-            const parentTotal = getTotalValue(node.parent);
-            if (parentTotal > 0) {
+        const sortedChildren = [...node.children].sort((a, b) => {
+           const valA = nodeDict[a] ? nodeDict[a].totalFlow : 0;
+           const valB = nodeDict[b] ? nodeDict[b].totalFlow : 0;
+           return valB - valA;
+        });
+
+        sortedChildren.forEach(childName => {
+           const childNode = nodeDict[childName];
+           if (childNode && childNode.totalFlow > 0) {
               links.push({
-                source: node.parent,
-                target: node.name,
-                value: Math.round(totalNodeValue)
+                 source: node.name,
+                 target: childName,
+                 value: Math.round(childNode.totalFlow)
               });
-            }
-          }
-        }
-      });
+              addNodeDFS(childName);
+           }
+        });
+      };
+
+      const rootNodes = Object.values(nodeDict).filter(n => !n.parent).sort((a, b) => b.totalFlow - a.totalFlow);
+      rootNodes.forEach(root => addNodeDFS(root.name));
 
       if (nodes.length === 0) nodes.push({ name: 'No Data' });
 
       setSankeyData({ nodes, links });
     } catch (error) {
       console.error("Failed to process Sankey data:", error);
+      message.error("Gagal menarik data diagram aliran.");
     } finally {
       setLoading(false);
     }
@@ -124,20 +152,27 @@ export default function EnergyFlowPage() {
     series: [
       {
         type: 'sankey',
-        layout: 'none',
+        nodeAlign: 'left', 
+        layoutIterations: 0,
         emphasis: { focus: 'adjacency' },
-        nodeAlign: 'justify',
-        nodeWidth: 15,
-        nodeGap: 15,
+        nodeWidth: 20, 
+        nodeGap: 8,
         label: { 
           show: true, 
-          fontSize: 11, 
+          position: 'right', 
+          fontSize: 12, 
           fontWeight: '500',
           color: isDarkMode ? '#fff' : '#000',
           formatter: (params) => `${params.name}: ${params.data.value?.toLocaleString()} kWh`
         },
-        lineStyle: { color: 'source', curveness: 0.4, opacity: 0.45 },
-        itemStyle: { borderWidth: 0, opacity: 1 },
+        lineStyle: { 
+          color: 'source', 
+          curveness: 0.5,  
+          opacity: 0.4     
+        },
+        itemStyle: { 
+          borderWidth: 0 
+        },
         data: sankeyData.nodes,
         links: sankeyData.links
       }
@@ -164,12 +199,14 @@ export default function EnergyFlowPage() {
 
       <Card bordered={false} styles={{ body: { padding: '24px' } }}>
         <Spin spinning={loading}>
-          <ReactECharts 
-            notMerge={true}
-            option={sankeyOption} 
-            theme={isDarkMode ? 'dark' : 'light'} 
-            style={{ height: '750px', width: '100%' }} 
-          />
+          <div style={{ backgroundColor: isDarkMode ? '#0d1117' : '#ffffff', padding: '20px', borderRadius: '8px' }}>
+            <ReactECharts 
+              notMerge={true}
+              option={sankeyOption} 
+              theme={isDarkMode ? 'dark' : 'light'} 
+              style={{ height: '800px', width: '100%' }} 
+            />
+          </div>
         </Spin>
       </Card>
     </div>
