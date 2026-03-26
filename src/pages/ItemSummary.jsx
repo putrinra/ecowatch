@@ -54,7 +54,7 @@ export default function ItemSummary() {
         setLoadingMain(false);
       })
       .catch(err => {
-        console.error("Gagal ambil data utama:", err);
+        console.error("Failed to fetch main data:", err);
         setLoadingMain(false);
       });
   };
@@ -84,7 +84,7 @@ export default function ItemSummary() {
         setLoadingBar(false);
       })
       .catch(err => {
-        console.error("Gagal ambil data bar:", err);
+        console.error("Failed to fetch bar data:", err);
         setLoadingBar(false);
       });
   };
