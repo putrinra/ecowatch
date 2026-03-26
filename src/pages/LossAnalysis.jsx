@@ -5,7 +5,7 @@ import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import dayjs from 'dayjs';
 
-const BASE_URL = 'http://localhost:5000'; // ⚠️ Sesuaikan dengan Flask Anda
+const BASE_URL = 'http://LAPTOP-KJ75ERV3:5000';
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -18,7 +18,6 @@ export default function LossAnalysis() {
   const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'day'), dayjs()]);
   const [loading, setLoading] = useState(false);
 
-  // State untuk menyimpan nama area yang sedang dianalisis
   const [branchName, setBranchName] = useState('MAIN_ELECTRICAL');
   
   const [lossData, setLossData] = useState([]);
@@ -35,11 +34,9 @@ export default function LossAnalysis() {
       const start = dateRange[0].format('YYYY-MM-DD');
       const end = dateRange[1].format('YYYY-MM-DD');
       
-      // ✅ 1. Tentukan siapa Induk yang sedang dipilih
       const targetParent = (checkedAreaNames && checkedAreaNames.length > 0) ? checkedAreaNames[0] : 'MAIN_ELECTRICAL';
-      setBranchName(targetParent); // Simpan nama aslinya ke state
+      setBranchName(targetParent);
 
-      // Ambil data Induk
       const parentUrl = `${BASE_URL}/energy?interval=${intervalWaktu}&start=${start}&end=${end}&areas=${targetParent}`;
       const parentRes = await axios.get(parentUrl);
       const parentData = parentRes.data || [];
@@ -52,7 +49,6 @@ export default function LossAnalysis() {
       const childrenList = parentData[0].children_names || [];
       let allRawData = [...parentData];
 
-      // Ambil data anak-anaknya
       if (childrenList.length > 0) {
         const childrenUrl = `${BASE_URL}/energy?interval=${intervalWaktu}&start=${start}&end=${end}&areas=${childrenList.join(',')}`;
         const childrenRes = await axios.get(childrenUrl);
@@ -102,8 +98,8 @@ export default function LossAnalysis() {
       setSummaryData({ parentTotal: totalParentUsage, childrenTotal: totalChildrenUsage });
 
     } catch (error) {
-      console.error("Gagal menarik data Loss Analysis", error);
-      message.error("Gagal menghubungi server");
+      console.error("Failed to fetch Loss Analysis data", error);
+      message.error("Failed to contact server");
     } finally {
       setLoading(false);
     }
@@ -111,10 +107,8 @@ export default function LossAnalysis() {
 
   useEffect(() => {
     fetchLossData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkedAreaNames]);
 
-  // Data ECharts
   const xData = lossData.map(d => d.time);
   const branchUsage = lossData.map(d => d.selectedBranch.toFixed(2));
   const subBranchUsage = lossData.map(d => d.subBranch.toFixed(2));
@@ -129,7 +123,6 @@ export default function LossAnalysis() {
       totalBalance = 0;
   }
 
-  // ✅ 2. Tabel sekarang menampilkan nama area aslinya
   const tableColumns = [
     { title: 'Time', dataIndex: 'time', key: 'time', width: '15%' },
     { title: `${branchName} usage (kWh)`, dataIndex: 'selectedBranch', align: 'right', render: v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
@@ -138,7 +131,6 @@ export default function LossAnalysis() {
     { title: 'Balance rate (%)', dataIndex: 'balanceRate', align: 'right', render: v => `${v.toFixed(2)}%` },
   ];
 
-  // ✅ 3. Grafik juga menggunakan nama asli area
   const lossAnalysisOption = {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
@@ -146,8 +138,6 @@ export default function LossAnalysis() {
       bottom: 0, 
       data: [`${branchName} usage`, 'Sub-branch usage', 'Balance rate'], 
       textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' },
-      // Opsional: Menyembunyikan grafik induk secara otomatis agar tidak bertumpuk
-      // selected: { [`${branchName} usage`]: false } 
     },
     grid: { left: '5%', right: '5%', bottom: 80, top: '10%', containLabel: true },
     dataZoom: [
@@ -188,7 +178,6 @@ export default function LossAnalysis() {
         <Row gutter={[10, 10]}>
           <Col xs={24} sm={12} lg={6}>
             <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
-              {/* ✅ 4. Teks KPI Card otomatis berubah menyesuaikan nama area */}
               <Text type="secondary" style={{ fontSize: '13px' }}>{branchName} usage</Text>
               <Title level={3} style={{ margin: 0, color: isDarkMode ? '#fff' : '#000' }}>
                 {summaryData.parentTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <Text style={{ fontSize: '14px', fontWeight: 'normal', color: isDarkMode ? '#a6a6a6' : '#595959' }}>kWh</Text>
