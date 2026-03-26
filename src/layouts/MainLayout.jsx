@@ -13,8 +13,8 @@ const menuItems = [
     children: [
       { key: '/area-usage', label: 'Area Usage' },
       { key: '/demand', label: 'Demand' },
-      { key: '/item-summary', label: 'Item Summary' },
       { key: '/tou-period', label: 'TOU Period' },
+      { key: '/item-summary', label: 'Item Summary' },
     ],
   },
   {
@@ -40,7 +40,10 @@ const treeData = [
     title: 'MAIN_ELECTRICAL',
     key: '0-0',
     children: [
-      { title: 'RAC', key: '0-0-0', children: [{ title: 'LVMDP_RAC', key: '0-0-0-0' }] },
+      { title: 'RAC', key: '0-0-0',
+        children: [
+          { title: 'LVMDP_RAC', key: '0-0-0-0' }
+        ] },
       { title: 'NR1', key: '0-0-1',
         children: [
           { title: 'LVMDP_NR1', key: '0-0-1-0' },
