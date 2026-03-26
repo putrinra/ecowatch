@@ -79,8 +79,8 @@ export default function AnnualReport() {
         setLoading(false);
       })
       .catch(err => {
-        console.error("Error mengambil data laporan:", err);
-        message.error("Gagal terhubung ke database server");
+        console.error("Error fetching annual data:", err);
+        message.error("Failed to connect to database server");
         setLoading(false);
       });
   };
