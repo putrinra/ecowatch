@@ -13,7 +13,7 @@ const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 export default function DemandPage() {
-  const { isDarkMode } = useOutletContext();
+  const { isDarkMode, checkedAreaNames } = useOutletContext();
   
   const [intervalWaktu, setIntervalWaktu] = useState('Minute');
   const [dateRange, setDateRange] = useState([dayjs(), dayjs()]);
@@ -25,7 +25,7 @@ export default function DemandPage() {
 
   const fetchDemandData = async () => {
     if (!dateRange || dateRange.length !== 2) {
-      message.warning('Silakan pilih rentang tanggal terlebih dahulu!');
+      message.warning('Choose a date range first!');
       return;
     }
 
@@ -34,38 +34,53 @@ export default function DemandPage() {
       const start = dateRange[0].format('YYYY-MM-DD');
       const end = dateRange[1].format('YYYY-MM-DD');
       
-      const url = `${BASE_URL}/energy?interval=${intervalWaktu}&start=${start}&end=${end}&areas=MAIN_ELECTRICAL`;
+      let url = `${BASE_URL}/energy?interval=${intervalWaktu}&start=${start}&end=${end}`;
+      if (checkedAreaNames && checkedAreaNames.length > 0) {
+        url += `&areas=${checkedAreaNames.join(',')}`;
+      } else {
+        url += `&areas=MAIN_ELECTRICAL`;
+      }
       
       const response = await axios.get(url);
       const rawData = response.data || [];
 
+      const aggregatedData = {};
+
+      rawData.forEach((item) => {
+        if (!aggregatedData[item.timestamp]) {
+          aggregatedData[item.timestamp] = 0;
+        }
+        aggregatedData[item.timestamp] += parseFloat(item.value_kwh);
+      });
+
+      const timestamps = Object.keys(aggregatedData).sort();
+      
       const xData = [];
       const sData = [];
       const tData = [];
 
-      rawData.forEach((item, index) => {
-        const [datePart, timePart] = item.timestamp.split(' ');
-        
-        xData.push(item.timestamp);
-        sData.push(item.value_kwh);
+      timestamps.forEach((ts, index) => {
+        const val = aggregatedData[ts];
+        xData.push(ts);
+        sData.push(val);
 
+        const [datePart, timePart] = ts.split(' ');
         tData.push({
           key: index.toString(),
           date: datePart,
           period: 'All time',
-          demand: parseFloat(item.value_kwh).toFixed(2),
+          demand: val.toFixed(2),
           time: timePart || '00:00'
         });
       });
 
       setChartXAxis(xData);
       setChartSeries(sData);
-      
       setTableData(tData.reverse());
 
     } catch (error) {
-      console.error('Gagal mengambil data demand:', error);
-      message.error('Gagal memuat data dari server!');
+      console.error('Failed to fetch demand data:', error);
+      message.error('Failed to load data from server!');
     } finally {
       setLoading(false);
     }
@@ -73,7 +88,11 @@ export default function DemandPage() {
 
   useEffect(() => {
     fetchDemandData();
-  }, []);
+  }, [checkedAreaNames]);
+
+  const seriesName = (checkedAreaNames && checkedAreaNames.length > 0) 
+    ? (checkedAreaNames.length === 1 ? checkedAreaNames[0] : 'Total Selected Areas')
+    : 'Demand (MAIN_ELECTRICAL)';
 
   const demandOption = {
     tooltip: { trigger: 'axis' },
@@ -90,7 +109,7 @@ export default function DemandPage() {
     yAxis: { type: 'value', name: 'kW', splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
     series: [
       {
-        name: 'Demand',
+        name: seriesName,
         type: 'line',
         data: chartSeries,
         itemStyle: { color: '#52c41a' },
@@ -146,11 +165,11 @@ export default function DemandPage() {
         </div>
       </Card>
 
-      <Card title="Demand" bordered={false} loading={loading} style={{ marginTop: 16 }}>
+      <Card title="Demand" bordered={false} loading={loading} style={{ marginTop: 5 }}>
         <ReactECharts notMerge={true} option={demandOption} theme={isDarkMode ? 'dark' : 'light'} className="demand-chart" style={{ height: '350px' }} />
       </Card>
 
-      <Card title="Data analysis" bordered={false} style={{ marginTop: 16 }}>
+      <Card title="Data analysis" bordered={false} style={{ marginTop: 5 }}>
         <Table 
           dataSource={tableData} 
           columns={columns} 
