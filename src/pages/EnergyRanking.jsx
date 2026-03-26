@@ -100,9 +100,11 @@ export default function EnergyRanking() {
       data: [rankingType === 'YoY' ? 'Last Year' : 'Last Month', 'Current'],
       textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' }
     },
-    grid: { top: '5%', left: '3%', right: '15%', bottom: '12%', containLabel: true },
+    grid: { top: '5%', left: '5%', right: '15%', bottom: '12%', containLabel: true },
     xAxis: {
-      type: 'value',
+      type: 'value', 
+      min: (value) => value.min * 1.2, 
+      max: (value) => value.max * 1.2,
       axisLabel: { formatter: (v) => Math.abs(v).toLocaleString() }
     },
     yAxis: {
