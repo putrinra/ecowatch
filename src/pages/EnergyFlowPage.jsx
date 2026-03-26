@@ -128,7 +128,7 @@ export default function EnergyFlowPage() {
       setSankeyData({ nodes, links });
     } catch (error) {
       console.error("Failed to process Sankey data:", error);
-      message.error("Gagal menarik data diagram aliran.");
+      message.error("Failed to fetch Sankey data.");
     } finally {
       setLoading(false);
     }
