@@ -259,13 +259,13 @@ export default function ItemSummary() {
               <Row gutter={[10, 10]}>
                 <Col xs={24} md={12}>
                   <Card title="Regional Usage" bordered={false}>
-                    <ReactECharts notMerge={true} option={regionalUsageOption} theme={isDarkMode ? 'dark' : 'light'} onEvents={onEvents} style={{ height: '250px' }} />
+                    <ReactECharts notMerge={true} option={regionalUsageOption} theme={isDarkMode ? 'dark' : 'light'} onEvents={onEvents} style={{ height: '200px' }} />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
                   <Spin spinning={loadingBar}>
                     <Card title={`${selectedArea === "Regional" ? "Overall" : selectedArea} Monthly Usage`} bordered={false}>
-                      <ReactECharts notMerge={true} option={racMonthlyOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '250px' }} />
+                      <ReactECharts notMerge={true} option={racMonthlyOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '200px' }} />
                     </Card>
                   </Spin>
                 </Col>
