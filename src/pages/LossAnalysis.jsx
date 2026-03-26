@@ -1,91 +1,166 @@
-import React from 'react';
-import { Card, Row, Col, Table, Typography, Space, Select, DatePicker, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Row, Col, Table, Typography, Space, Select, DatePicker, Button, Spin, message } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useOutletContext } from 'react-router-dom';
+import axios from 'axios';
+import dayjs from 'dayjs';
+
+const BASE_URL = 'http://localhost:5000'; // ⚠️ Sesuaikan dengan Flask Anda
 
 const { Option } = Select;
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 export default function LossAnalysis() {
-  const { isDarkMode } = useOutletContext();
+  const { isDarkMode, checkedAreaNames } = useOutletContext();
+  
+  const [intervalWaktu, setIntervalWaktu] = useState('Day');
+  const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'day'), dayjs()]);
+  const [loading, setLoading] = useState(false);
 
-  const lossDates = [];
-  const branchUsage = [];
-  const subBranchUsage = [];
-  const balanceRate = [];
+  // State untuk menyimpan nama area yang sedang dianalisis
+  const [branchName, setBranchName] = useState('MAIN_ELECTRICAL');
+  
+  const [lossData, setLossData] = useState([]);
+  const [summaryData, setSummaryData] = useState({ parentTotal: 0, childrenTotal: 0 });
 
-  for (let i = 25; i <= 31; i++) lossDates.push(`01/${i}`);
-  for (let i = 1; i <= 24; i++) lossDates.push(`02/${i < 10 ? '0' + i : i}`);
-
-  lossDates.forEach((date) => {
-    if (date === '02/02') {
-      branchUsage.push(0); subBranchUsage.push(0); balanceRate.push(100);
-    } else if (date === '02/23') {
-      branchUsage.push(1957361.86); subBranchUsage.push(1957361.86); balanceRate.push(100);
-    } else {
-      branchUsage.push(0); subBranchUsage.push(0); balanceRate.push(0);
+  const fetchLossData = async () => {
+    if (!dateRange || dateRange.length !== 2) {
+      message.warning('Pilih rentang tanggal!');
+      return;
     }
-  });
 
-  const tableData = lossDates.map((date, index) => {
-    const lossVal = branchUsage[index] - subBranchUsage[index];
-    return {
-      key: index,
-      time: date,
-      selectedBranch: branchUsage[index].toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      subBranch: subBranchUsage[index].toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      lossValue: lossVal.toLocaleString('en-US', { minimumFractionDigits: 2 }),
-      balanceRate: balanceRate[index] === 0 ? '--' : `${balanceRate[index]}.00`
-    };
-  });
+    setLoading(true);
+    try {
+      const start = dateRange[0].format('YYYY-MM-DD');
+      const end = dateRange[1].format('YYYY-MM-DD');
+      
+      // ✅ 1. Tentukan siapa Induk yang sedang dipilih
+      const targetParent = (checkedAreaNames && checkedAreaNames.length > 0) ? checkedAreaNames[0] : 'MAIN_ELECTRICAL';
+      setBranchName(targetParent); // Simpan nama aslinya ke state
 
+      // Ambil data Induk
+      const parentUrl = `${BASE_URL}/energy?interval=${intervalWaktu}&start=${start}&end=${end}&areas=${targetParent}`;
+      const parentRes = await axios.get(parentUrl);
+      const parentData = parentRes.data || [];
+
+      if (parentData.length === 0) {
+        setLossData([]);
+        return;
+      }
+
+      const childrenList = parentData[0].children_names || [];
+      let allRawData = [...parentData];
+
+      // Ambil data anak-anaknya
+      if (childrenList.length > 0) {
+        const childrenUrl = `${BASE_URL}/energy?interval=${intervalWaktu}&start=${start}&end=${end}&areas=${childrenList.join(',')}`;
+        const childrenRes = await axios.get(childrenUrl);
+        allRawData = [...allRawData, ...(childrenRes.data || [])];
+      }
+
+      const timeMap = {};
+      let totalParentUsage = 0;
+      let totalChildrenUsage = 0;
+
+      allRawData.forEach(item => {
+        const ts = item.timestamp;
+        if (!timeMap[ts]) timeMap[ts] = { time: ts, parentVal: 0, childrenVal: 0 };
+
+        const val = parseFloat(item.value_kwh);
+        
+        if (item.tag_name === targetParent) {
+          timeMap[ts].parentVal += val;
+          totalParentUsage += val;
+        } else {
+          timeMap[ts].childrenVal += val;
+          totalChildrenUsage += val;
+        }
+      });
+
+      const formattedData = Object.values(timeMap).sort((a, b) => a.time.localeCompare(b.time)).map((d, idx) => {
+        const lossVal = Math.max(0, d.parentVal - d.childrenVal); 
+        let balanceRt = 100;
+        if (d.parentVal > 0) {
+           balanceRt = (d.childrenVal / d.parentVal) * 100;
+           if (balanceRt > 100) balanceRt = 100; 
+        } else if (d.parentVal === 0 && d.childrenVal === 0) {
+           balanceRt = 0;
+        }
+
+        return {
+          key: idx,
+          time: d.time.split(' ')[0], 
+          selectedBranch: d.parentVal,
+          subBranch: d.childrenVal,
+          lossValue: lossVal,
+          balanceRate: balanceRt
+        };
+      });
+
+      setLossData(formattedData);
+      setSummaryData({ parentTotal: totalParentUsage, childrenTotal: totalChildrenUsage });
+
+    } catch (error) {
+      console.error("Gagal menarik data Loss Analysis", error);
+      message.error("Gagal menghubungi server");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLossData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkedAreaNames]);
+
+  // Data ECharts
+  const xData = lossData.map(d => d.time);
+  const branchUsage = lossData.map(d => d.selectedBranch.toFixed(2));
+  const subBranchUsage = lossData.map(d => d.subBranch.toFixed(2));
+  const balanceRate = lossData.map(d => d.balanceRate.toFixed(2));
+
+  const totalLoss = Math.max(0, summaryData.parentTotal - summaryData.childrenTotal);
+  let totalBalance = 100;
+  if (summaryData.parentTotal > 0) {
+      totalBalance = (summaryData.childrenTotal / summaryData.parentTotal) * 100;
+      if (totalBalance > 100) totalBalance = 100;
+  } else if (summaryData.parentTotal === 0 && summaryData.childrenTotal === 0){
+      totalBalance = 0;
+  }
+
+  // ✅ 2. Tabel sekarang menampilkan nama area aslinya
   const tableColumns = [
     { title: 'Time', dataIndex: 'time', key: 'time', width: '15%' },
-    { title: 'Selected branch usage(kWh)', dataIndex: 'selectedBranch', key: 'selectedBranch', align: 'right' },
-    { title: 'Sub-branch usage(kWh)', dataIndex: 'subBranch', key: 'subBranch', align: 'right' },
-    { title: 'Loss value(kWh)', dataIndex: 'lossValue', key: 'lossValue', align: 'right' },
-    { title: 'Balance rate(%)', dataIndex: 'balanceRate', key: 'balanceRate', align: 'right' },
+    { title: `${branchName} usage (kWh)`, dataIndex: 'selectedBranch', align: 'right', render: v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+    { title: 'Sub-branch usage (kWh)', dataIndex: 'subBranch', align: 'right', render: v => v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
+    { title: 'Loss value (kWh)', dataIndex: 'lossValue', align: 'right', render: v => <Text type={v > 0 ? "danger" : ""}>{v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text> },
+    { title: 'Balance rate (%)', dataIndex: 'balanceRate', align: 'right', render: v => `${v.toFixed(2)}%` },
   ];
 
+  // ✅ 3. Grafik juga menggunakan nama asli area
   const lossAnalysisOption = {
     backgroundColor: 'transparent',
     tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
-    
     legend: { 
-      bottom: 0,
-      data: ['Selected branch usage', 'Sub-branch usage', 'Balance rate'],
-      textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' } 
+      bottom: 0, 
+      data: [`${branchName} usage`, 'Sub-branch usage', 'Balance rate'], 
+      textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' },
+      // Opsional: Menyembunyikan grafik induk secara otomatis agar tidak bertumpuk
+      // selected: { [`${branchName} usage`]: false } 
     },
-    grid: { left: '5%', right: '5%', bottom: 80,top: '10%', containLabel: true },
+    grid: { left: '5%', right: '5%', bottom: 80, top: '10%', containLabel: true },
     dataZoom: [
-      { 
-        type: 'slider', 
-        bottom: 35,
-        height: 15,
-        start: 0,
-        end: 100,
-        borderColor: 'transparent',
-        backgroundColor: isDarkMode ? '#1f1f1f' : '#e6f4ff',
-        fillerColor: isDarkMode ? 'rgba(22, 119, 255, 0.3)' : 'rgba(22, 119, 255, 0.2)'
-      }, 
+      { type: 'slider', bottom: 35, height: 15, borderColor: 'transparent', backgroundColor: isDarkMode ? '#1f1f1f' : '#e6f4ff', fillerColor: isDarkMode ? 'rgba(22, 119, 255, 0.3)' : 'rgba(22, 119, 255, 0.2)' }, 
       { type: 'inside' }
     ],
-
-    xAxis: [{ type: 'category', data: lossDates, axisTick: { alignWithLabel: true } }],
+    xAxis: [{ type: 'category', data: xData, axisTick: { alignWithLabel: true }, axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' } }],
     yAxis: [
-      {
-        type: 'value', name: 'Energy usage(kWh)', position: 'left',
-        axisLabel: { formatter: (value) => (value > 0 ? value / 1000 + 'K' : '0') },
-        splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } }
-      },
-      {
-        type: 'value', name: 'Balance rate(%)', position: 'right', min: 0, max: 100,
-        axisLabel: { formatter: '{value}' }, splitLine: { show: false }
-      }
+      { type: 'value', name: 'Energy usage(kWh)', position: 'left', nameTextStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' }, axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959', formatter: (v) => (v >= 1000 ? (v / 1000) + 'K' : v) }, splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
+      { type: 'value', name: 'Balance rate(%)', position: 'right', min: 0, max: 100, nameTextStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' }, axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959', formatter: '{value}' }, splitLine: { show: false } }
     ],
     series: [
-      { name: 'Selected branch usage', type: 'bar', yAxisIndex: 0, itemStyle: { color: '#1677ff' }, data: branchUsage },
+      { name: `${branchName} usage`, type: 'bar', yAxisIndex: 0, itemStyle: { color: '#1677ff' }, data: branchUsage },
       { name: 'Sub-branch usage', type: 'bar', yAxisIndex: 0, itemStyle: { color: '#bae0ff' }, data: subBranchUsage },
       { name: 'Balance rate', type: 'line', yAxisIndex: 1, itemStyle: { color: '#faad14' }, lineStyle: { width: 2 }, data: balanceRate }
     ]
@@ -97,69 +172,74 @@ export default function LossAnalysis() {
       <Card bodyStyle={{ padding: '10px 24px' }} bordered={false}>
         <Space wrap>
           <span>Energy item</span>
-          <Select defaultValue="Electricity" style={{ width: 150 }}>
-            <Option value="Electricity">Electricity</Option>
-          </Select>
-          <span>Interval</span>
-          <Select defaultValue="Day" style={{ width: 120 }}>
+          <Select defaultValue="Electricity" style={{ width: 150 }}><Option value="Electricity">Electricity</Option></Select>
+          <span style={{ marginLeft: 16 }}>Interval</span>
+          <Select value={intervalWaktu} onChange={setIntervalWaktu} style={{ width: 120 }}>
             <Option value="Day">Day</Option>
             <Option value="Month">Month</Option>
           </Select>
-          <span>Time</span>
-          <RangePicker />
-          <Button type="primary">Search</Button>
+          <span style={{ marginLeft: 16 }}>Time</span>
+          <RangePicker value={dateRange} onChange={setDateRange} allowClear={false} />
+          <Button type="primary" onClick={fetchLossData} loading={loading}>Search</Button>
         </Space>
       </Card>
 
-      <Row gutter={[10, 10]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
-            <Text type="secondary">Selected branch usage</Text>
-            <Title level={3} style={{ margin: 0 }}>1,957,361.86 <Text style={{ fontSize: '14px', fontWeight: 'normal' }}>kWh</Text></Title>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
-            <Text type="secondary">Sub-branch usage</Text>
-            <Title level={3} style={{ margin: 0 }}>1,957,361.86 <Text style={{ fontSize: '14px', fontWeight: 'normal' }}>kWh</Text></Title>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
-            <Text type="secondary">Loss value</Text>
-            <Title level={3} style={{ margin: 0 }}>0.00 <Text style={{ fontSize: '14px', fontWeight: 'normal' }}>kWh</Text></Title>
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
-            <Text type="secondary">Balance rate</Text>
-            <Title level={3} style={{ margin: 0 }}>100.00 <Text style={{ fontSize: '14px', fontWeight: 'normal' }}>%</Text></Title>
-          </Card>
-        </Col>
-      </Row>
+      <Spin spinning={loading}>
+        <Row gutter={[10, 10]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
+              {/* ✅ 4. Teks KPI Card otomatis berubah menyesuaikan nama area */}
+              <Text type="secondary" style={{ fontSize: '13px' }}>{branchName} usage</Text>
+              <Title level={3} style={{ margin: 0, color: isDarkMode ? '#fff' : '#000' }}>
+                {summaryData.parentTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <Text style={{ fontSize: '14px', fontWeight: 'normal', color: isDarkMode ? '#a6a6a6' : '#595959' }}>kWh</Text>
+              </Title>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>Sub-branch usage</Text>
+              <Title level={3} style={{ margin: 0, color: isDarkMode ? '#fff' : '#000' }}>
+                {summaryData.childrenTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <Text style={{ fontSize: '14px', fontWeight: 'normal', color: isDarkMode ? '#a6a6a6' : '#595959' }}>kWh</Text>
+              </Title>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>Loss value</Text>
+              <Title level={3} style={{ margin: 0, color: totalLoss > 0 ? '#ff4d4f' : (isDarkMode ? '#fff' : '#000') }}>
+                {totalLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <Text style={{ fontSize: '14px', fontWeight: 'normal', color: isDarkMode ? '#a6a6a6' : '#595959' }}>kWh</Text>
+              </Title>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card bordered={false} bodyStyle={{ padding: '20px' }} style={{ height: '100%' }}>
+              <Text type="secondary" style={{ fontSize: '13px' }}>Balance rate</Text>
+              <Title level={3} style={{ margin: 0, color: isDarkMode ? '#fff' : '#000' }}>
+                {totalBalance.toFixed(2)} <Text style={{ fontSize: '14px', fontWeight: 'normal', color: isDarkMode ? '#a6a6a6' : '#595959' }}>%</Text>
+              </Title>
+            </Card>
+          </Col>
+        </Row>
 
-      <Row gutter={[10, 10]}>
-        <Col span={24}>
-          <Card title="Loss analysis" bordered={false}>
-            <ReactECharts 
-              option={lossAnalysisOption} 
-              theme={isDarkMode ? 'dark' : 'light'} 
-              style={{ height: '350px' }} 
-            />
-          </Card>
-        </Col>
-        <Col span={24}>
-          <Card title="Loss detail" bordered={false} bodyStyle={{ padding: 0 }}>
-            <Table 
-              dataSource={tableData} 
-              columns={tableColumns} 
-              pagination={false} 
-              scroll={{ y: 300 }} 
-              size="middle"
-            />
-          </Card>
-        </Col>
-      </Row>
+        <Row gutter={[10, 10]} style={{ marginTop: '10px' }}>
+          <Col span={24}>
+            <Card title="Loss analysis" bordered={false}>
+              <ReactECharts notMerge option={lossAnalysisOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '350px' }} />
+            </Card>
+          </Col>
+          <Col span={24}>
+            <Card title="Loss detail" bordered={false} bodyStyle={{ padding: 0 }}>
+              <Table 
+                dataSource={lossData} 
+                columns={tableColumns} 
+                pagination={false} 
+                scroll={{ y: 300 }} 
+                size="middle"
+              />
+            </Card>
+          </Col>
+        </Row>
+      </Spin>
 
     </div>
   );
