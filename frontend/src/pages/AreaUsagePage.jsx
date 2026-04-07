@@ -5,6 +5,7 @@ import ReactECharts from "echarts-for-react";
 import { useOutletContext } from "react-router-dom";
 import axios from "axios";
 import { RefreshCw } from "lucide-react";
+import dayjs from "dayjs"; 
 import "../style/AreaUsage.css";
 
 const { Option } = Select;
@@ -14,11 +15,15 @@ export default function AreaUsagePage() {
   const { isDarkMode, checkedAreaNames } = useOutletContext();
 
   const [intervalWaktu, setIntervalWaktu] = useState(() => {
-    return sessionStorage.getItem("savedInterval") || "Hour";
+    return sessionStorage.getItem("savedInterval") || "Day";
   });
-  const [dateRange, setDateRange] = useState(null);
-  const [chartData, setChartData] = useState([]);
   
+  const [dateRange, setDateRange] = useState([
+    dayjs('2026-03-01'), 
+    dayjs('2026-03-31')
+  ]);
+  
+  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const fetchData = () => {
@@ -26,7 +31,7 @@ export default function AreaUsagePage() {
 
     let url = `http://LAPTOP-KJ75ERV3:5000/energy?interval=${intervalWaktu}`;
 
-    if (dateRange && dateRange.length === 2) {
+    if (dateRange && dateRange[0] && dateRange[1]) {
       const startDate = dateRange[0].format("YYYY-MM-DD");
       const endDate = dateRange[1].format("YYYY-MM-DD");
       url += `&start=${startDate}&end=${endDate}`;
@@ -42,11 +47,12 @@ export default function AreaUsagePage() {
       .then(res => {
         const dataArray = Array.isArray(res.data) ? res.data : (res.data.data || []);
         setChartData(dataArray);
-        setLoading(false);
       })
       .catch(err => {
         console.error("Error to fetch data:", err);
         message.error("Failed to fetch data from server");
+      })
+      .finally(() => {
         setLoading(false);
       });
   };
@@ -139,7 +145,11 @@ export default function AreaUsagePage() {
           </Space>
           <Space size="small">
             <span className="filter-label">Time</span>
-            <RangePicker className="picker-time" onChange={(dates) => setDateRange(dates)} />
+            <RangePicker 
+              className="picker-time" 
+              value={dateRange} 
+              onChange={(dates) => setDateRange(dates)} 
+            />
           </Space>
           <Button type="primary" onClick={fetchData}>Search</Button>
         </Space>
