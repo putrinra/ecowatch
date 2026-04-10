@@ -31,7 +31,7 @@ export default function EnergyRanking() {
       
       if (selected !== 'MAIN_ELECTRICAL') {
          try {
-            const currentYear = 2026; // Data dummy
+            const currentYear = 2026; 
             const res = await axios.get(`${BASE_URL}/energy?interval=Month&start=${currentYear}-01-01&end=${currentYear}-12-31&areas=${selected}`);
             const data = res.data;
             
@@ -41,7 +41,7 @@ export default function EnergyRanking() {
                 return selected; 
             }
          } catch (error) {
-             console.error("Gagal melacak anak area", error);
+             console.error("Failed to fetch child areas", error);
          }
       }
     }
@@ -149,6 +149,7 @@ export default function EnergyRanking() {
   };
 
   const rankingOption = {
+    backgroundColor: 'transparent', 
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
@@ -170,13 +171,16 @@ export default function EnergyRanking() {
       type: 'value', 
       min: (value) => value.min * 1.2, 
       max: (value) => value.max * 1.2,
-      axisLabel: { formatter: (v) => Math.abs(v).toLocaleString() },
+      axisLabel: { 
+        color: isDarkMode ? '#d9d9d9' : '#595959', 
+        formatter: (v) => Math.abs(v).toLocaleString() 
+      },
       splitLine: { show: false }
     },
     yAxis: {
       type: 'category',
       data: categories,
-      axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' }
+      axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' } 
     },
     series: [
       {
@@ -185,7 +189,12 @@ export default function EnergyRanking() {
         stack: 'Total',
         data: comparisonData.map(v => -v),
         itemStyle: { color: '#91caff' },
-        label: { show: true, position: 'left', formatter: (p) => Math.abs(p.value).toLocaleString() }
+        label: { 
+          show: true, 
+          position: 'left', 
+          color: isDarkMode ? '#d9d9d9' : '#595959', 
+          formatter: (p) => Math.abs(p.value).toLocaleString() 
+        }
       },
       {
         name: 'Current',
@@ -196,6 +205,7 @@ export default function EnergyRanking() {
         label: { 
           show: true, 
           position: 'right', 
+          color: isDarkMode ? '#d9d9d9' : '#595959', 
           formatter: (p) => `${p.value.toLocaleString()} (${growthRates[p.dataIndex]}%)` 
         }
       }
@@ -269,7 +279,11 @@ export default function EnergyRanking() {
       >
         <Spin spinning={loading} indicator={<DotLoader color="#1677ff" size={40} />}>
           {categories.length > 0 ? (
-            <ReactECharts notMerge={true} option={rankingOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: Math.max(categories.length * 80 + 100, 300) + 'px' }} />
+            <ReactECharts 
+              notMerge={true} 
+              option={rankingOption} 
+              style={{ height: Math.max(categories.length * 80 + 100, 300) + 'px' }} 
+            />
           ) : (
             <div style={{ height: '300px', display: 'flex', justifyContent: 'center', alignItems: 'center', color: isDarkMode ? '#a6a6a6' : '#595959' }}>
               No data available for the selected month
