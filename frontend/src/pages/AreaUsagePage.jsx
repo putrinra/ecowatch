@@ -113,6 +113,11 @@ export default function AreaUsagePage() {
   const areaUsageOption = useMemo(() => {
     if (!chartData || chartData.length === 0) {
       return {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: "axis" },
+        legend: { bottom: 0, type: "scroll", textStyle: { color: isDarkMode ? "#d9d9d9" : "#595959" } },
+        grid: { top: "5%", left: "3%", right: "4%", bottom: "80px", containLabel: true },
+
         title: { 
           text: "No data available for selected areas / Empty data", 
           left: "center", top: "center",
@@ -288,8 +293,7 @@ export default function AreaUsagePage() {
         >
           <ReactECharts 
             option={areaUsageOption} 
-            notMerge={true} 
-            theme={isDarkMode ? "dark" : "light"} 
+            notMerge={true}
             style={{ height: "620px", width: "100%" }} 
           />
         </Spin>
