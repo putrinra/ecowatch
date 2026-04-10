@@ -218,8 +218,7 @@ export default function DemandPage() {
         <Spin spinning={loading}>
           <ReactECharts 
             notMerge={true} 
-            option={demandOption} 
-            theme={isDarkMode ? 'dark' : 'light'} 
+            option={demandOption}
             className="demand-chart" 
             style={{ height: 'calc(40vh - 70px)', minHeight: '220px', width: '100%' }} 
           />
