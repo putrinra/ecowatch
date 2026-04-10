@@ -224,20 +224,8 @@ export default function EnergyRanking() {
           style={{ border: isDarkMode ? '1px solid #303030' : '1px solid #d9d9d9' }}
         />
       </ConfigProvider>
-      
-      <Divider type="vertical" style={{ height: '20px', margin: '0 4px', borderColor: isDarkMode ? '#303030' : '#d9d9d9' }} />
 
       <Space size="small">
-        <Button 
-          type="text" 
-          icon={<Download size={18} />} 
-          onClick={handleExportExcel} 
-          style={{ 
-            color: isDarkMode ? '#a6a6a6' : '#8c8c8c',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
-          }} 
-          title="Download Excel"
-        />
         <Button 
           type="text" 
           icon={<RefreshCw size={18} />}
@@ -248,6 +236,16 @@ export default function EnergyRanking() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
           }}
           title="Refresh Data"
+        />
+        <Button 
+          type="text" 
+          icon={<Download size={18} />} 
+          onClick={handleExportExcel} 
+          style={{ 
+            color: isDarkMode ? '#a6a6a6' : '#8c8c8c',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
+          }} 
+          title="Download Excel"
         />
       </Space>
     </Space>
