@@ -253,19 +253,19 @@ export default function ItemSummary() {
           <Col xs={24} lg={16}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', height: '100%' }}>
               <Card title="Monthly Usage" bordered={false}>
-                <ReactECharts notMerge={true} option={monthlyUsageOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '200px' }} />
+                <ReactECharts notMerge={true} option={monthlyUsageOption} style={{ height: '200px' }} />
               </Card>
               
               <Row gutter={[10, 10]}>
                 <Col xs={24} md={12}>
                   <Card title="Regional Usage" bordered={false}>
-                    <ReactECharts notMerge={true} option={regionalUsageOption} theme={isDarkMode ? 'dark' : 'light'} onEvents={onEvents} style={{ height: '200px' }} />
+                    <ReactECharts notMerge={true} option={regionalUsageOption} onEvents={onEvents} style={{ height: '200px' }} />
                   </Card>
                 </Col>
                 <Col xs={24} md={12}>
                   <Spin spinning={loadingBar}>
                     <Card title={`${selectedArea === "Regional" ? "Overall" : selectedArea} Monthly Usage`} bordered={false}>
-                      <ReactECharts notMerge={true} option={racMonthlyOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '200px' }} />
+                      <ReactECharts notMerge={true} option={racMonthlyOption} style={{ height: '200px' }} />
                     </Card>
                   </Spin>
                 </Col>
