@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Select, Button, Space, Table, Radio, Typography, Spin, message } from 'antd';
+import { Card, Select, Button, Space, Table, Typography, Spin, message, Segmented, ConfigProvider, Divider } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import { DotLoader } from 'react-spinners';
+import { RefreshCw, Download } from 'lucide-react';
+import dayjs from 'dayjs';
 
 const { Option } = Select;
 const { Text } = Typography;
+
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://LAPTOP-KJ75ERV3:5000';
 
 export default function EnergyRanking() {
   const { isDarkMode, checkedAreaNames } = useOutletContext();
   
   const [loading, setLoading] = useState(false);
-  const [rankingType, setRankingType] = useState('YoY');
+  const [rankingType, setRankingType] = useState('YoY'); 
   
   const [categories, setCategories] = useState([]);
   const [comparisonData, setComparisonData] = useState([]);
@@ -27,8 +31,8 @@ export default function EnergyRanking() {
       
       if (selected !== 'MAIN_ELECTRICAL') {
          try {
-            const currentYear = new Date().getFullYear();
-            const res = await axios.get(`http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${currentYear}-01-01&end=${currentYear}-12-31&areas=${selected}`);
+            const currentYear = 2026; // Data dummy
+            const res = await axios.get(`${BASE_URL}/energy?interval=Month&start=${currentYear}-01-01&end=${currentYear}-12-31&areas=${selected}`);
             const data = res.data;
             
             if (data && data.length > 0 && data[0].children_names && data[0].children_names.length > 0) {
@@ -37,7 +41,7 @@ export default function EnergyRanking() {
                 return selected; 
             }
          } catch (error) {
-             console.error("Failed to fetch child areas", error);
+             console.error("Gagal melacak anak area", error);
          }
       }
     }
@@ -73,8 +77,8 @@ export default function EnergyRanking() {
     try {
       const dynamicAreas = await getTargetAreas();
 
-      const resCur = await axios.get(`http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${startCur}&end=${endCur}&areas=${dynamicAreas}`);
-      const resComp = await axios.get(`http://LAPTOP-KJ75ERV3:5000/energy?interval=Month&start=${startComp}&end=${endComp}&areas=${dynamicAreas}`);
+      const resCur = await axios.get(`${BASE_URL}/energy?interval=Month&start=${startCur}&end=${endCur}&areas=${dynamicAreas}`);
+      const resComp = await axios.get(`${BASE_URL}/energy?interval=Month&start=${startComp}&end=${endComp}&areas=${dynamicAreas}`);
 
       const dataCurArray = Array.isArray(resCur.data) ? resCur.data : resCur.data.data || [];
       const dataCompArray = Array.isArray(resComp.data) ? resComp.data : resComp.data.data || [];
@@ -117,6 +121,32 @@ export default function EnergyRanking() {
   useEffect(() => {
     fetchData();
   }, [rankingType, checkedAreaNames]); 
+
+  const handleExportExcel = () => {
+    if (!categories || categories.length === 0) {
+      message.warning("No data to export!");
+      return;
+    }
+
+    const compLabel = rankingType === 'YoY' ? 'Last Year (kWh)' : 'Last Month (kWh)';
+    const headers = ["Area", "Current (kWh)", compLabel, `${rankingType} Growth (%)`];
+    
+    const rows = categories.map((cat, i) => 
+      `${cat},${currentData[i]},${comparisonData[i]},${growthRates[i]}`
+    );
+    
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `EnergyRanking_${rankingType}_${dayjs().format('YYYYMMDD')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    message.success("Energy Ranking data exported successfully!");
+  };
 
   const rankingOption = {
     tooltip: {
@@ -172,6 +202,57 @@ export default function EnergyRanking() {
     ]
   };
 
+  const lightBlueTheme = {
+    components: {
+      Segmented: {
+        itemSelectedBg: isDarkMode ? '#112a45' : '#e6f4ff',
+        itemSelectedColor: isDarkMode ? '#69c0ff' : '#1677ff',
+        itemColor: isDarkMode ? '#a6a6a6' : '#8c8c8c',
+        trackBg: isDarkMode ? '#141414' : '#ffffff',
+        trackPadding: 2,
+      },
+    },
+  };
+
+  const extraControls = (
+    <Space size="middle" wrap align="center">
+      <ConfigProvider theme={lightBlueTheme}>
+        <Segmented 
+          options={['YoY', 'MoM']} 
+          value={rankingType} 
+          onChange={setRankingType} 
+          style={{ border: isDarkMode ? '1px solid #303030' : '1px solid #d9d9d9' }}
+        />
+      </ConfigProvider>
+      
+      <Divider type="vertical" style={{ height: '20px', margin: '0 4px', borderColor: isDarkMode ? '#303030' : '#d9d9d9' }} />
+
+      <Space size="small">
+        <Button 
+          type="text" 
+          icon={<Download size={18} />} 
+          onClick={handleExportExcel} 
+          style={{ 
+            color: isDarkMode ? '#a6a6a6' : '#8c8c8c',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
+          }} 
+          title="Download Excel"
+        />
+        <Button 
+          type="text" 
+          icon={<RefreshCw size={18} />}
+          loading={loading} 
+          onClick={fetchData}
+          style={{ 
+            color: isDarkMode ? '#a6a6a6' : '#8c8c8c',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
+          }}
+          title="Refresh Data"
+        />
+      </Space>
+    </Space>
+  );
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <Card styles={{ body: { padding: '10px 24px' } }}>
@@ -185,13 +266,8 @@ export default function EnergyRanking() {
       </Card>
 
       <Card 
-        title={`Energy Ranking (${rankingType})`} 
-        extra={
-          <Radio.Group value={rankingType} onChange={(e) => setRankingType(e.target.value)} buttonStyle="solid">
-            <Radio.Button value="YoY">YoY</Radio.Button>
-            <Radio.Button value="MoM">MoM</Radio.Button>
-          </Radio.Group>
-        }
+        title="Energy Ranking" 
+        extra={extraControls}
       >
         <Spin spinning={loading} indicator={<DotLoader color="#1677ff" size={40} />}>
           {categories.length > 0 ? (
