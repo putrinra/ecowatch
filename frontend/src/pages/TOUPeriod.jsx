@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Select, DatePicker, Button, Space, Row, Col, message, Spin } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Card, Select, DatePicker, Button, Space, Row, Col, message, Spin, Segmented, ConfigProvider, Divider } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { RefreshCw, Download, BarChart2, LineChart } from "lucide-react";
 
-const BASE_URL = 'http://LAPTOP-KJ75ERV3:5000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://LAPTOP-KJ75ERV3:5000';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -17,7 +18,12 @@ export default function TOUPeriod() {
   const { isDarkMode, checkedAreaNames } = useOutletContext();
   
   const [intervalWaktu, setIntervalWaktu] = useState('Day');
-  const [dateRange, setDateRange] = useState([dayjs().subtract(7, 'day'), dayjs()]);
+  
+  const [dateRange, setDateRange] = useState([
+    dayjs('2026-03-10'), 
+    dayjs('2026-03-16')
+  ]);
+  
   const [loading, setLoading] = useState(false);
   
   const [summaryData, setSummaryData] = useState({
@@ -25,6 +31,8 @@ export default function TOUPeriod() {
   });
   const [lineChartData, setLineChartData] = useState({ dates: [], peak: [], offPeak: [] });
   const [barChartData, setBarChartData] = useState({ tags: [], values: [] });
+
+  const [topChartType, setTopChartType] = useState('bar');
 
   const fetchTOUData = async () => {
     if (!dateRange || dateRange.length !== 2) {
@@ -106,6 +114,30 @@ export default function TOUPeriod() {
     fetchTOUData();
   }, [checkedAreaNames]);
 
+  const handleExportTrendExcel = () => {
+    if (!lineChartData.dates || lineChartData.dates.length === 0) {
+      message.warning("No data to export!");
+      return;
+    }
+
+    const headers = ["Date/Time", "On-peak (kWh)", "Off-peak (kWh)"];
+    const rows = lineChartData.dates.map((date, i) => 
+      `${date},${lineChartData.peak[i]},${lineChartData.offPeak[i]}`
+    );
+    
+    const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
+    const encodedUri = encodeURI(csvContent);
+    
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `TOU_Trend_${dayjs().format('YYYYMMDD_HHmm')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    message.success("TOU Trend data exported successfully!");
+  };
+
   const totalKwh = summaryData.peakKwh + summaryData.offPeakKwh;
   const peakPct = totalKwh > 0 ? ((summaryData.peakKwh / totalKwh) * 100).toFixed(2) : 0;
   const offPeakPct = totalKwh > 0 ? ((summaryData.offPeakKwh / totalKwh) * 100).toFixed(2) : 0;
@@ -155,8 +187,8 @@ export default function TOUPeriod() {
     legend: { bottom: 0, data: ['On-peak', 'Off-peak'], textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' } },
     grid: { top: '10%', left: '3%', right: '4%', bottom: '15%', containLabel: true },
     dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 30, height: 15 }],
-    xAxis: { type: 'category', boundaryGap: false, data: lineChartData.dates },
-    yAxis: { type: 'value', name: 'kWh', splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
+    xAxis: { type: 'category', boundaryGap: false, data: lineChartData.dates, axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' } },
+    yAxis: { type: 'value', name: 'kWh', nameTextStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' }, axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' }, splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
     series: [
       { name: 'On-peak', type: 'line', itemStyle: { color: '#faad14' }, areaStyle: { opacity: 0.1 }, data: lineChartData.peak },
       { name: 'Off-peak', type: 'line', itemStyle: { color: '#52c41a' }, areaStyle: { opacity: 0.1 }, data: lineChartData.offPeak }
@@ -167,12 +199,80 @@ export default function TOUPeriod() {
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     grid: { top: '15%', left: '3%', right: '4%', bottom: '15%', containLabel: true },
     dataZoom: [{ type: 'inside' }, { type: 'slider', bottom: 10, height: 15 }],
-    xAxis: { type: 'category', data: barChartData.tags, axisLabel: { interval: 0, rotate: 30 } },
-    yAxis: { type: 'value', name: 'kWh', splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
+    xAxis: { type: 'category', data: barChartData.tags, axisLabel: { interval: 0, rotate: 30, color: isDarkMode ? '#d9d9d9' : '#595959' } },
+    yAxis: { type: 'value', name: 'kWh', nameTextStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' }, axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' }, splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
     series: [
-      { name: 'Usage', type: 'bar', barWidth: '30%', itemStyle: { color: '#1677ff', borderRadius: [4, 4, 0, 0] }, data: barChartData.values }
+      { 
+        name: 'Usage', 
+        type: topChartType,
+        barWidth: '30%', 
+        smooth: true,
+        itemStyle: { 
+          color: '#1677ff', 
+          borderRadius: topChartType === 'bar' ? [4, 4, 0, 0] : 0 
+        }, 
+        areaStyle: topChartType === 'line' ? { color: '#1677ff', opacity: 0.1 } : null,
+        data: barChartData.values 
+      }
     ]
   };
+
+  const lightBlueTheme = {
+    components: {
+      Segmented: {
+        itemSelectedBg: isDarkMode ? '#112a45' : '#e6f4ff',
+        itemSelectedColor: isDarkMode ? '#69c0ff' : '#1677ff',
+        itemColor: isDarkMode ? '#a6a6a6' : '#8c8c8c',
+        trackBg: isDarkMode ? '#141414' : '#ffffff',
+        trackPadding: 2,
+      },
+    },
+  };
+
+  const trendControls = (
+    <Space size="small">
+      <Button 
+        type="text" 
+        icon={<RefreshCw size={18} />}
+        loading={loading} 
+        onClick={fetchTOUData}
+        style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }}
+        title="Refresh Data"
+      />
+      <Button 
+        type="text" 
+        icon={<Download size={18} />} 
+        onClick={handleExportTrendExcel} 
+        style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }} 
+        title="Download Excel"
+      />
+    </Space>
+  );
+
+  const topUsageControls = (
+    <Space size="middle" wrap align="center">
+      <ConfigProvider theme={lightBlueTheme}>
+        <Segmented 
+          options={[
+            { value: 'bar', icon: <BarChart2 size={18} style={{ verticalAlign: 'middle', marginTop: 4 }} /> },
+            { value: 'line', icon: <LineChart size={18} style={{ verticalAlign: 'middle', marginTop: 4 }} /> }
+          ]}
+          value={topChartType} 
+          onChange={setTopChartType} 
+          style={{ backgroundColor: 'transparent', border: isDarkMode ? '1px solid #303030' : '1px solid #d9d9d9' }} 
+        />
+      </ConfigProvider>
+      
+      <Button 
+        type="text" 
+        icon={<RefreshCw size={18} />}
+        loading={loading} 
+        onClick={fetchTOUData}
+        style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c', display: 'flex', justifyContent: 'center', marginTop: '2px'}}
+        title="Refresh Data"
+      />
+    </Space>
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -205,11 +305,11 @@ export default function TOUPeriod() {
           </Col>
         </Row>
 
-        <Card title="TOU Period (Trend)" bordered={false} style={{ marginTop: 10 }}>
+        <Card title="TOU Period (Trend)" bordered={false} extra={trendControls} style={{ marginTop: 10 }}>
           <ReactECharts notMerge option={touLineOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '300px' }} />
         </Card>
 
-        <Card title="Top Usage (By Area)" bordered={false} style={{ marginTop: 10 }}>
+        <Card title="Top Usage (By Area)" bordered={false} extra={topUsageControls} style={{ marginTop: 10 }}>
           <ReactECharts notMerge option={topUsageOption} theme={isDarkMode ? 'dark' : 'light'} style={{ height: '250px' }} />
         </Card>
       </Spin>
