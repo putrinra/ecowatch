@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Input, Tree, Button, Typography, ConfigProvider, theme, Dropdown } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Sun, Moon, Search, Menu as MenuIcon, Settings, User, LogOut, Home, Bell, SlidersHorizontal, Expand, Shrink } from 'lucide-react';
+import { Sun, Moon, Search, Menu as MenuIcon, Settings, User, LogOut, Home, Bell, Expand, Shrink } from 'lucide-react';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -214,7 +214,6 @@ export default function MainLayout() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <LiveClock isDarkMode={isDarkMode} />
             <Button type="text" shape="circle" icon={isDarkMode ? <Sun size={20} color="#ffffff" /> : <Moon size={20} color="#595959" />} onClick={() => setIsDarkMode(!isDarkMode)} />
-            <Button type="text" shape="circle" icon={<SlidersHorizontal size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
             <Button type="text" shape="circle" icon={<Bell size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
             
             <Dropdown menu={{ items: settingsMenuItems }} placement="bottomRight" trigger={['click']}>
