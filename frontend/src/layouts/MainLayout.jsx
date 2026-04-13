@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu, Input, Tree, Button, Typography, ConfigProvider, theme, Dropdown } from 'antd';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Sun, Moon, Search, Menu as MenuIcon, Settings, User, LogOut, Home, Bell, SlidersHorizontal } from 'lucide-react'; 
+import { Sun, Moon, Search, Menu as MenuIcon, Settings, User, LogOut, Home, Bell, SlidersHorizontal, Expand, Shrink } from 'lucide-react';
 
 const { Header, Content, Sider } = Layout;
 const { Title, Text } = Typography;
@@ -106,6 +106,8 @@ export default function MainLayout() {
   const [selectedKeys, setSelectedKeys] = useState([]);
   const [checkedAreaNames, setCheckedAreaNames] = useState([]); 
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -121,6 +123,26 @@ export default function MainLayout() {
   useEffect(() => {
     localStorage.setItem('appTheme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+      });
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('loggedInUser');
@@ -145,7 +167,42 @@ export default function MainLayout() {
   ];
 
   return (
-    <ConfigProvider theme={{ algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm }}>
+    <ConfigProvider 
+      theme={{ 
+        algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
+        components: {
+          Menu: {
+            itemColor: isDarkMode ? '#a6a6a6' : '#595959',
+            itemSelectedColor: isDarkMode ? '#ffffff' : '#1677ff',
+            itemSelectedBg: isDarkMode ? '#112a45' : '#e6f4ff', 
+            itemHoverColor: isDarkMode ? '#ffffff' : '#1677ff',
+            itemHoverBg: isDarkMode ? '#1f1f1f' : 'rgba(0, 0, 0, 0.04)',
+            itemBorderRadius: 0, 
+            itemMarginInline: 0, 
+          }
+        }
+      }}
+    >
+      <style>{`
+        .ant-menu-inline .ant-menu-item::after,
+        .ant-menu-inline .ant-menu-submenu-title::after {
+          display: none !important;
+        }
+
+        .ant-menu-item-selected {
+          position: relative;
+        }
+        .ant-menu-item-selected::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background-color: #1677ff; 
+        }
+      `}</style>
+
       <Layout style={{ height: '100vh', overflow: 'hidden' }}>
         
         <Header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 24px', height: '64px', backgroundColor: isDarkMode ? '#141414' : '#ffffff', borderBottom: isDarkMode ? '1px solid #303030' : '1px solid #E5E5E5', position: 'sticky', top: 0, zIndex: 1000 }}>
@@ -157,21 +214,35 @@ export default function MainLayout() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <LiveClock isDarkMode={isDarkMode} />
             <Button type="text" shape="circle" icon={isDarkMode ? <Sun size={20} color="#ffffff" /> : <Moon size={20} color="#595959" />} onClick={() => setIsDarkMode(!isDarkMode)} />
-            <Button 
-              type="text" 
-              shape="circle" 
-              icon={<SlidersHorizontal size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} 
-            />
+            <Button type="text" shape="circle" icon={<SlidersHorizontal size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
             <Button type="text" shape="circle" icon={<Bell size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
+            
             <Dropdown menu={{ items: settingsMenuItems }} placement="bottomRight" trigger={['click']}>
               <Button type="text" shape="circle" icon={<Settings size={20} color={isDarkMode ? '#ffffff' : '#595959'} />} />
             </Dropdown>
+
+            <Button 
+              type="text" 
+              shape="circle" 
+              onClick={toggleFullscreen}
+              icon={isFullscreen ? 
+                <Shrink size={18} color={isDarkMode ? '#ffffff' : '#595959'} /> : 
+                <Expand size={18} color={isDarkMode ? '#ffffff' : '#595959'} />
+              } 
+            />
           </div>
         </Header>
 
         <Layout style={{ height: 'calc(100vh - 64px)' }}>
           <Sider width={170} theme={isDarkMode ? 'dark' : 'light'} style={{ backgroundColor: isDarkMode ? '#141414' : '#ffffff', borderRight: isDarkMode ? '1px solid #303030' : '1px solid #f0f0f0', paddingTop: '10px', zIndex: 10, height: '100%', overflowY: 'auto' }} collapsible trigger={null} collapsed={collapsed}>
-            <Menu mode="inline" selectedKeys={[location.pathname]} defaultOpenKeys={['energy-monitor', 'effect-analysis', 'report-management']} style={{ height: '100%', borderRight: 0 }} items={menuItems} onClick={({ key }) => navigate(key)} />
+            <Menu 
+              mode="inline" 
+              selectedKeys={[location.pathname]} 
+              defaultOpenKeys={['energy-monitor', 'effect-analysis', 'report-management']} 
+              style={{ height: '100%', borderRight: 0, backgroundColor: 'transparent' }} 
+              items={menuItems} 
+              onClick={({ key }) => navigate(key)} 
+            />
           </Sider>
 
           {showAreaSidebar && (
