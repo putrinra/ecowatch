@@ -8,7 +8,7 @@ import dayjs from 'dayjs';
 const { Option } = Select;
 const { Title, Text } = Typography;
 
-const BASE_URL = 'http://LAPTOP-KJ75ERV3:5000';
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://LAPTOP-KJ75ERV3:5000';
 
 export default function ItemSummary() {
   const { isDarkMode } = useOutletContext();
@@ -162,11 +162,20 @@ export default function ItemSummary() {
   const lastYearTop = topMonthlyData.map(v => v > 0 ? Math.round(v * 0.85) : 0);
 
   const monthlyUsageOption = {
+    backgroundColor: 'transparent',
     tooltip: { trigger: 'axis' },
     legend: { bottom: 0, data: ['This year', 'Last year', 'Target usage'], textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' } },
     grid: { left: '3%', right: '4%', bottom: '15%', top: '3%', containLabel: true },
-    xAxis: { type: 'category', data: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] },
-    yAxis: { type: 'value', axisLabel: { formatter: (v) => (v >= 1000 ? (v / 1000) + 'K' : v) }, splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
+    xAxis: { 
+      type: 'category', 
+      data: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
+      axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' } 
+    },
+    yAxis: { 
+      type: 'value', 
+      axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959', formatter: (v) => (v >= 1000 ? (v / 1000) + 'K' : v) }, 
+      splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } 
+    },
     series: [
       { name: 'This year', type: 'bar', itemStyle: { color: '#1890ff' }, data: topMonthlyData },
       { name: 'Last year', type: 'bar', itemStyle: { color: isDarkMode ? '#172b4d' : '#e6f4ff' }, data: lastYearTop },
@@ -179,11 +188,20 @@ export default function ItemSummary() {
   const lastYearBar = barDataThisYear.map(v => v > 0 ? Math.round(v * 0.85) : 0);
 
   const racMonthlyOption = {
+    backgroundColor: 'transparent',
     tooltip: { trigger: 'axis' },
     legend: { bottom: 0, textStyle: { color: isDarkMode ? '#d9d9d9' : '#595959' } },
     grid: { left: '3%', right: '4%', bottom: '15%', top: '3%', containLabel: true },
-    xAxis: { type: 'category', data: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'] },
-    yAxis: { type: 'value', axisLabel: { formatter: (v) => (v >= 1000 ? (v / 1000) + 'K' : v) }, splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } },
+    xAxis: { 
+      type: 'category', 
+      data: ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'],
+      axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959' } 
+    },
+    yAxis: { 
+      type: 'value', 
+      axisLabel: { color: isDarkMode ? '#d9d9d9' : '#595959', formatter: (v) => (v >= 1000 ? (v / 1000) + 'K' : v) }, 
+      splitLine: { lineStyle: { type: 'dashed', color: isDarkMode ? '#303030' : '#e8e8e8' } } 
+    },
     series: [
       { name: 'This year', type: 'bar', itemStyle: { color: '#1890ff' }, data: barDataThisYear },
       { name: 'Last year', type: 'bar', itemStyle: { color: isDarkMode ? '#172b4d' : '#e6f4ff' }, data: lastYearBar },
@@ -192,12 +210,19 @@ export default function ItemSummary() {
   };
 
   const regionalUsageOption = {
+    backgroundColor: 'transparent',
     tooltip: { trigger: 'item', formatter: '{b} : {c} kWh ({d}%)' },
     series: [
       {
         type: 'pie', cursor: 'pointer', radius: ['45%', '65%'],
         itemStyle: { borderRadius: 4, borderColor: isDarkMode ? '#141414' : '#fff', borderWidth: 2 },
-        label: { show: true, position: 'outside', formatter: '{b}\n{d}%', fontWeight: 'bold' },
+        label: { 
+          show: true, 
+          position: 'outside', 
+          formatter: '{b}\n{d}%', 
+          fontWeight: 'bold',
+          color: isDarkMode ? '#d9d9d9' : '#595959',
+        },
         data: pieData.length > 0 ? pieData : [{ name: 'No Data', value: 0 }]
       }
     ]
