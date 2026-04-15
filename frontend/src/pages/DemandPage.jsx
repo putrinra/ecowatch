@@ -244,8 +244,14 @@ export default function DemandPage() {
         },
         markPoint: {
           data: [{ type: 'max', name: 'Peak Demand' }],
+          symbol: 'roundRect',
+          symbolSize: [60, 30],
           itemStyle: { color: '#52c41a' },
-          label: { color: '#fff', fontWeight: 'bold' }
+          label: { 
+            show: true,
+            color: '#fff', 
+            fontWeight: 'bold'
+          }
         }
       }
     ]
