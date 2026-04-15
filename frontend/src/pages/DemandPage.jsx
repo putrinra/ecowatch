@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Select, DatePicker, Button, Space, Table, message, Spin } from 'antd';
+import { Card, Select, DatePicker, Button, Space, Table, message, Spin, Dropdown } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
 import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { RefreshCw, Download } from "lucide-react";
+import { RefreshCw, Download, FileText, Table as TableIcon } from "lucide-react";
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import '../style/Demand.css';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://LAPTOP-KJ75ERV3:5000';
@@ -16,8 +18,13 @@ const { RangePicker } = DatePicker;
 export default function DemandPage() {
   const { isDarkMode, checkedAreaNames } = useOutletContext();
   
-  const [intervalWaktu, setIntervalWaktu] = useState('Minute');
-  const [dateRange, setDateRange] = useState([dayjs('2026-03-16'), dayjs('2026-03-16')]);
+  const [intervalWaktu, setIntervalWaktu] = useState('Hour'); 
+  
+  const [dateRange, setDateRange] = useState([
+    dayjs().subtract(30, 'd'), 
+    dayjs()
+  ]);
+  
   const [loading, setLoading] = useState(false);
   const [chartXAxis, setChartXAxis] = useState([]);
   const [chartSeries, setChartSeries] = useState([]);
@@ -90,9 +97,9 @@ export default function DemandPage() {
     fetchDemandData();
   }, [checkedAreaNames]);
 
-  const handleExportExcel = () => {
+  const handleExportCSV = () => {
     if (!tableData || tableData.length === 0) {
-      message.warning("No data to export!");
+      message.warning("No data available for export!");
       return;
     }
 
@@ -104,13 +111,99 @@ export default function DemandPage() {
     
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `DemandData_${dayjs().format('YYYYMMDD_HHmm')}.csv`);
+    link.setAttribute("download", `DemandData_RAW_${dayjs().format('YYYYMMDD_HHmm')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    message.success("Demand data exported successfully!");
+    message.success("Raw Data (CSV) exported successfully!");
   };
+
+  const handleExportExcel = async () => {
+    if (!tableData || tableData.length === 0) {
+      message.warning("No data available for export!");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Demand Data');
+
+    worksheet.columns = [
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Electricity Period', key: 'period', width: 25 },
+      { header: 'Demand (kW)', key: 'demand', width: 20 },
+      { header: 'Time', key: 'time', width: 15 },
+    ];
+
+    tableData.forEach(d => {
+      worksheet.addRow({
+        date: d.date,
+        period: d.period,
+        demand: parseFloat(d.demand) || 0,
+        time: d.time
+      });
+    });
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1677FF' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell((cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin' }, left: { style: 'thin' },
+            bottom: { style: 'thin' }, right: { style: 'thin' }
+          };
+          if (colNumber === 3) {
+            cell.numFmt = '#,##0.00 "kW"';
+            cell.alignment = { horizontal: 'right' };
+          }
+          if (colNumber === 1 || colNumber === 4) {
+            cell.alignment = { horizontal: 'center' };
+          }
+        });
+      }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `DemandData_OfficialReport_${dayjs().format('YYYYMMDD_HHmm')}.xlsx`);
+
+    message.success("Official Report (Excel) exported successfully!");
+  };
+
+  const exportMenu = {
+    items: [
+      {
+        key: 'excel',
+        label: 'Download Excel',
+        icon: <TableIcon size={16} />,
+        onClick: handleExportExcel
+      },
+      {
+        key: 'csv',
+        label: 'Download CSV',
+        icon: <FileText size={16} />,
+        onClick: handleExportCSV
+      }
+    ]
+  };
+
+  const rangePresets = [
+    { label: 'Hari Ini', value: [dayjs(), dayjs()] },
+    { label: '7 Hari Terakhir', value: [dayjs().subtract(7, 'd'), dayjs()] },
+    { label: '30 Hari Terakhir', value: [dayjs().subtract(30, 'd'), dayjs()] },
+    { label: 'Bulan Ini', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+    { label: 'Bulan Lalu', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+  ];
 
   const seriesName = (checkedAreaNames && checkedAreaNames.length > 0) 
     ? (checkedAreaNames.length === 1 ? checkedAreaNames[0] : 'Total Selected Areas')
@@ -159,10 +252,10 @@ export default function DemandPage() {
   };
 
   const columns = [
-    { title: 'Date', dataIndex: 'date', key: 'date' },
+    { title: 'Date', dataIndex: 'date', key: 'date', align: 'center' },
     { title: 'Electricity period', dataIndex: 'period', key: 'period' },
-    { title: 'Demand (kW)', dataIndex: 'demand', key: 'demand' },
-    { title: 'Time', dataIndex: 'time', key: 'time' },
+    { title: 'Demand (kW)', dataIndex: 'demand', key: 'demand', align: 'right' },
+    { title: 'Time', dataIndex: 'time', key: 'time', align: 'center' },
   ];
 
   const extraControls = (
@@ -175,13 +268,14 @@ export default function DemandPage() {
         style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }}
         title="Refresh Data"
       />
-      <Button 
-        type="text" 
-        icon={<Download size={18} />} 
-        onClick={handleExportExcel} 
-        style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }} 
-        title="Download Excel"
-      />
+      <Dropdown menu={exportMenu} placement="bottomRight" trigger={['click']}>
+        <Button 
+          type="text" 
+          icon={<Download size={18} />} 
+          style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }} 
+          title="Download Data"
+        />
+      </Dropdown>
     </Space>
   );
 
@@ -202,11 +296,14 @@ export default function DemandPage() {
               <Option value="Hour">Hour</Option>
             </Select>
             <span className="demand-label-time" style={{ marginLeft: 16 }}>Time</span>
+            
             <RangePicker 
               value={dateRange}
+              presets={rangePresets}
               onChange={(dates) => setDateRange(dates)}
               allowClear={false}
             />
+            
             <Button type="primary" className="demand-btn-search" onClick={fetchDemandData} loading={loading}>
               Search
             </Button>
