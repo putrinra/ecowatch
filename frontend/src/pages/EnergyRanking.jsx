@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Select, Button, Space, Table, Typography, Spin, message, Segmented, ConfigProvider, Divider } from 'antd';
+import { Card, Select, Button, Space, Table, Typography, Spin, message, Segmented, ConfigProvider, Dropdown } from 'antd';
 import ReactECharts from 'echarts-for-react';
 import { useOutletContext } from 'react-router-dom';
 import axios from 'axios';
 import { DotLoader } from 'react-spinners';
-import { RefreshCw, Download } from 'lucide-react';
+import { RefreshCw, Download, FileText, Table as TableIcon } from 'lucide-react';
 import dayjs from 'dayjs';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 const { Option } = Select;
 const { Text } = Typography;
@@ -122,9 +124,9 @@ export default function EnergyRanking() {
     fetchData();
   }, [rankingType, checkedAreaNames]); 
 
-  const handleExportExcel = () => {
+  const handleExportCSV = () => {
     if (!categories || categories.length === 0) {
-      message.warning("No data to export!");
+      message.warning("Tidak ada data untuk diekspor!");
       return;
     }
 
@@ -140,12 +142,95 @@ export default function EnergyRanking() {
     
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `EnergyRanking_${rankingType}_${dayjs().format('YYYYMMDD')}.csv`);
+    link.setAttribute("download", `EnergyRanking_RAW_${rankingType}_${dayjs().format('YYYYMMDD')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    message.success("Energy Ranking data exported successfully!");
+    message.success("Raw Data (CSV) exported successfully!");
+  };
+
+  const handleExportExcel = async () => {
+    if (!categories || categories.length === 0) {
+      message.warning("No data available for export!");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Ranking Energi');
+
+    const compLabel = rankingType === 'YoY' ? 'Last Year' : 'Last Month';
+
+    worksheet.columns = [
+      { header: 'Area', key: 'area', width: 25 },
+      { header: 'Current (kWh)', key: 'current', width: 20 },
+      { header: `${compLabel} (kWh)`, key: 'comp', width: 20 },
+      { header: `${rankingType} Growth (%)`, key: 'growth', width: 18 }
+    ];
+
+    categories.forEach((cat, i) => {
+      worksheet.addRow({
+        area: cat,
+        current: parseFloat(currentData[i]) || 0,
+        comp: parseFloat(comparisonData[i]) || 0,
+        growth: parseFloat(growthRates[i]) || 0
+      });
+    });
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1677FF' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell((cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin' }, left: { style: 'thin' },
+            bottom: { style: 'thin' }, right: { style: 'thin' }
+          };
+          
+          if (colNumber === 2 || colNumber === 3) {
+            cell.numFmt = '#,##0.00 "kWh"';
+            cell.alignment = { horizontal: 'right' };
+          }
+          
+          if (colNumber === 4) {
+            cell.numFmt = '0.00"%"';
+            cell.alignment = { horizontal: 'right' };
+          }
+        });
+      }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `EnergyRanking_${rankingType}_OfficialReport_${dayjs().format('YYYYMMDD')}.xlsx`);
+
+    message.success("Official Report (Excel) exported successfully!");
+  };
+
+  const exportMenu = {
+    items: [
+      {
+        key: 'excel',
+        label: 'Download Excel',
+        icon: <TableIcon size={16} />,
+        onClick: handleExportExcel
+      },
+      {
+        key: 'csv',
+        label: 'Download CSV',
+        icon: <FileText size={16} />,
+        onClick: handleExportCSV
+      }
+    ]
   };
 
   const rankingOption = {
@@ -247,16 +332,18 @@ export default function EnergyRanking() {
           }}
           title="Refresh Data"
         />
-        <Button 
-          type="text" 
-          icon={<Download size={18} />} 
-          onClick={handleExportExcel} 
-          style={{ 
-            color: isDarkMode ? '#a6a6a6' : '#8c8c8c',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
-          }} 
-          title="Download Excel"
-        />
+        
+        <Dropdown menu={exportMenu} placement="bottomRight" trigger={['click']}>
+          <Button 
+            type="text" 
+            icon={<Download size={18} />} 
+            style={{ 
+              color: isDarkMode ? '#a6a6a6' : '#8c8c8c',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '2px'
+            }} 
+            title="Download Data"
+          />
+        </Dropdown>
       </Space>
     </Space>
   );
