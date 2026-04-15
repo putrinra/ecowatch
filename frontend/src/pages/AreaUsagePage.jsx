@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Card, Select, DatePicker, Button, Space, message, Spin, Segmented, ConfigProvider, Divider } from "antd";
+import { Card, Select, DatePicker, Button, Space, message, Spin, Segmented, ConfigProvider, Divider, Dropdown } from "antd";
 import { DotLoader } from "react-spinners";
 import ReactECharts from "echarts-for-react";
 import { useOutletContext } from "react-router-dom";
 import axios from "axios";
-import { RefreshCw, Download, BarChart2, LineChart } from "lucide-react";
+import { RefreshCw, Download, BarChart2, LineChart, FileText, Table } from "lucide-react";
 import dayjs from "dayjs"; 
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import "../style/AreaUsage.css";
 
 const { Option } = Select;
@@ -21,8 +23,8 @@ export default function AreaUsagePage() {
   });
   
   const [dateRange, setDateRange] = useState([
-    dayjs('2026-03-01'), 
-    dayjs('2026-03-31')
+    dayjs().subtract(30, 'd'), 
+    dayjs()
   ]);
   
   const [chartData, setChartData] = useState([]);
@@ -35,7 +37,6 @@ export default function AreaUsagePage() {
 
   const fetchData = async () => {
     setLoading(true);
-
     try {
       let url = `${BASE_URL}/energy?interval=${intervalWaktu}`;
       let compUrl = `${BASE_URL}/energy?interval=${intervalWaktu}`;
@@ -75,10 +76,9 @@ export default function AreaUsagePage() {
       } else {
         setCompChartData([]);
       }
-
     } catch (err) {
       console.error("Error to fetch data:", err);
-      message.error("Failed to fetch data from server");
+      message.error("Error to fetch data");
     } finally {
       setLoading(false);
     }
@@ -88,27 +88,102 @@ export default function AreaUsagePage() {
     fetchData();
   }, [checkedAreaNames, comparisonMode]);
 
-  const handleExportExcel = () => {
+  const handleExportCSV = () => {
     if (!chartData || chartData.length === 0) {
-      message.warning("No data to export!");
+      message.warning("No data available for export!");
       return;
     }
-
     const headers = ["Timestamp", "Area/Tag Name", "Value (kWh)"];
     const rows = chartData.map(d => `${d.timestamp},${d.tag_name},${d.value_kwh}`);
-    
     const csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n" + rows.join("\n");
     const encodedUri = encodeURI(csvContent);
-    
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `AreaUsage_${dayjs().format('YYYYMMDD_HHmm')}.csv`);
+    link.setAttribute("download", `AreaUsage_RAW_${dayjs().format('YYYYMMDD_HHmm')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    
-    message.success("Data exported to Excel (CSV) successfully!");
+    message.success("Raw Data (CSV) exported successfully!");
   };
+
+  const handleExportExcel = async () => {
+    if (!chartData || chartData.length === 0) {
+      message.warning("No data available for export!");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Energy Usage');
+
+    worksheet.columns = [
+      { header: 'Waktu (Timestamp)', key: 'timestamp', width: 25 },
+      { header: 'Nama Area / Tag', key: 'tag_name', width: 25 },
+      { header: 'Penggunaan (kWh)', key: 'value', width: 20 }
+    ];
+
+    chartData.forEach(d => {
+      worksheet.addRow({
+        timestamp: d.timestamp,
+        tag_name: d.tag_name,
+        value: parseFloat(d.value_kwh) || 0
+      });
+    });
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1677FF' } };
+      cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 11 };
+      cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      cell.border = {
+        top: { style: 'thin' }, left: { style: 'thin' },
+        bottom: { style: 'thin' }, right: { style: 'thin' }
+      };
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.eachCell((cell, colNumber) => {
+          cell.border = {
+            top: { style: 'thin' }, left: { style: 'thin' },
+            bottom: { style: 'thin' }, right: { style: 'thin' }
+          };
+          if (colNumber === 3) {
+            cell.numFmt = '#,##0.00 "kWh"';
+            cell.alignment = { horizontal: 'right' };
+          }
+        });
+      }
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `AreaUsage_OfficialReport_${dayjs().format('YYYYMMDD_HHmm')}.xlsx`);
+    message.success("Report exported successfully!");
+  };
+
+  const exportMenu = {
+    items: [
+      {
+        key: 'excel',
+        label: 'Download Excel',
+        icon: <Table size={16} />,
+        onClick: handleExportExcel 
+      },
+      {
+        key: 'csv',
+        label: 'Download CSV',
+        icon: <FileText size={16} />,
+        onClick: handleExportCSV 
+      }
+    ]
+  };
+
+  const rangePresets = [
+    { label: '7 Days Ago', value: [dayjs().subtract(7, 'd'), dayjs()] },
+    { label: '30 Days Ago', value: [dayjs().subtract(30, 'd'), dayjs()] },
+    { label: 'This Month', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+    { label: 'Last Month', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+  ];
 
   const areaUsageOption = useMemo(() => {
     if (!chartData || chartData.length === 0) {
@@ -117,9 +192,8 @@ export default function AreaUsagePage() {
         tooltip: { trigger: "axis" },
         legend: { bottom: 0, type: "scroll", textStyle: { color: isDarkMode ? "#d9d9d9" : "#595959" } },
         grid: { top: "5%", left: "3%", right: "4%", bottom: "80px", containLabel: true },
-
         title: { 
-          text: "No data available for selected areas / Empty data", 
+          text: "Data not available", 
           left: "center", top: "center",
           textStyle: { color: isDarkMode ? '#d9d9d9' : '#888', fontWeight: 'normal', fontSize: 14 }
         },
@@ -138,7 +212,6 @@ export default function AreaUsagePage() {
 
     const compDataMap = {};
     if (comparisonMode !== 'Target energy' && compChartData.length > 0) {
-      const compTimestamps = [...new Set(compChartData.map(d => d.timestamp))].sort();
       compChartData.forEach(d => {
         if (!compDataMap[d.tag_name]) compDataMap[d.tag_name] = [];
         compDataMap[d.tag_name].push(d.value_kwh);
@@ -146,7 +219,6 @@ export default function AreaUsagePage() {
     }
 
     const series = [];
-    
     tags.forEach(tag => {
       series.push({
         name: tag,
@@ -164,25 +236,21 @@ export default function AreaUsagePage() {
           stack: chartType === 'bar' ? 'CompTotal' : null,
           smooth: true,
           lineStyle: { type: 'dashed', width: 2 },
-          itemStyle: { opacity: 0.6, borderType: 'dashed' },
+          itemStyle: { opacity: 0.6 },
           data: xAxisData.map((_, index) => compDataMap[tag]?.[index] || 0)
         });
       }
     });
 
     return {
+      backgroundColor: 'transparent',
       tooltip: { trigger: "axis" },
       legend: { bottom: 0, type: "scroll", textStyle: { color: isDarkMode ? "#d9d9d9" : "#595959" } },
       grid: { top: "5%", left: "3%", right: "4%", bottom: "80px", containLabel: true },
       dataZoom: [{ type: "slider", bottom: 35, height: 15 }, { type: "inside" }],
-      xAxis: { 
-        type: "category", 
-        data: xAxisData, 
-        axisLabel: { color: isDarkMode ? "#d9d9d9" : "#595959" } 
-      },
+      xAxis: { type: "category", data: xAxisData, axisLabel: { color: isDarkMode ? "#d9d9d9" : "#595959" } },
       yAxis: { 
-        type: "value", 
-        name: "kWh",
+        type: "value", name: "kWh", 
         nameTextStyle: { color: isDarkMode ? "#d9d9d9" : "#595959" },
         axisLabel: { color: isDarkMode ? "#d9d9d9" : "#595959" },
         splitLine: { lineStyle: { color: isDarkMode ? "#303030" : "#e8e8e8", type: "dashed" } } 
@@ -191,88 +259,69 @@ export default function AreaUsagePage() {
     };
   }, [chartData, compChartData, isDarkMode, chartType, comparisonMode]);
 
-  const dashboardControlTheme = {
+  const controlTheme = {
     components: {
       Segmented: {
         itemSelectedBg: isDarkMode ? '#112a45' : '#e6f4ff',
         itemSelectedColor: isDarkMode ? '#69c0ff' : '#1677ff',
         itemColor: isDarkMode ? '#a6a6a6' : '#8c8c8c',
         trackBg: isDarkMode ? '#141414' : '#ffffff',
-        trackPadding: 2,
       },
     },
   };
 
   const extraControls = (
     <Space size="middle" wrap align="center">
-      
-      <ConfigProvider theme={dashboardControlTheme}>
+      <ConfigProvider theme={controlTheme}>
         <Segmented 
           options={['Target energy', 'YoY', 'MoM']} 
-          value={comparisonMode} 
-          onChange={setComparisonMode} 
+          value={comparisonMode} onChange={setComparisonMode} 
           style={{ border: isDarkMode ? '1px solid #303030' : '1px solid #d9d9d9' }}
         />
-        
-        <Divider type="vertical" style={{ height: '20px', margin: '0 4px', borderColor: isDarkMode ? '#303030' : '#d9d9d9' }} />
-
+        <Divider type="vertical" style={{ height: '20px', margin: '0 4px' }} />
         <Segmented 
           options={[
-            { value: 'line', icon: <LineChart size={18} style={{ verticalAlign: 'middle', marginTop: 4 }} /> },
-            { value: 'bar', icon: <BarChart2 size={18} style={{ verticalAlign: 'middle', marginTop: 4 }} /> }
+            { value: 'line', icon: <LineChart size={18} style={{ marginTop: 4 }} /> },
+            { value: 'bar', icon: <BarChart2 size={18} style={{ marginTop: 4 }} /> }
           ]}
-          value={chartType} 
-          onChange={setChartType} 
-          style={{ backgroundColor: 'transparent' }}
+          value={chartType} onChange={setChartType} 
         />
       </ConfigProvider>
 
       <Space size="small">
-        <Button 
-          type="text" 
-          icon={<RefreshCw size={18} />}
-          loading={loading} 
-          onClick={fetchData}
-          style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }}
-          title="Refresh Data"
-        />
+        <Button type="text" icon={<RefreshCw size={18} />} loading={loading} onClick={fetchData} style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }} />
         
-        <Button 
-          type="text" 
-          icon={<Download size={18} />} 
-          onClick={handleExportExcel} 
-          style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }} 
-          title="Download Excel"
-        />
+        <Dropdown menu={exportMenu} placement="bottomRight" trigger={['click']}>
+          <Button type="text" icon={<Download size={18} />} style={{ color: isDarkMode ? '#a6a6a6' : '#8c8c8c' }} />
+        </Dropdown>
       </Space>
     </Space>
   );
 
   return (
     <div className="area-usage-container">
-      <Card styles={{ body: { padding: "10px 24px", overflowX: "auto" } }} className="full-width-card">
-        <Space size="middle" wrap={false} className="filter-wrapper">
-          <Space size="small">
+      <Card styles={{ body: { padding: "10px 24px" } }} className="full-width-card">
+        <Space size="middle" wrap className="filter-wrapper">
+          <Space>
             <span className="filter-label">Energy item</span>
-            <Select defaultValue="Electricity" className="select-energy">
+            <Select defaultValue="Electricity" style={{ width: 120 }}>
               <Option value="Electricity">Electricity</Option>
             </Select>
           </Space>
-          <Space size="small">
+          <Space>
             <span className="filter-label">Interval</span>
-            <Select value={intervalWaktu} onChange={setIntervalWaktu} className="select-interval">
+            <Select value={intervalWaktu} onChange={setIntervalWaktu} style={{ width: 100 }}>
               <Option value="Year">Year</Option>
               <Option value="Month">Month</Option>
               <Option value="Day">Day</Option>
               <Option value="Hour">Hour</Option>
-              <Option value="Minute">Minute</Option>
             </Select>
           </Space>
-          <Space size="small">
+          <Space>
             <span className="filter-label">Time</span>
             <RangePicker 
-              className="picker-time" 
               value={dateRange} 
+              presets={rangePresets}
               onChange={(dates) => setDateRange(dates)} 
             />
           </Space>
@@ -280,22 +329,9 @@ export default function AreaUsagePage() {
         </Space>
       </Card>
 
-      <Card 
-        title="Area Usage" 
-        variant="borderless" 
-        className="full-width-card" 
-        style={{ marginTop: '5px' }}
-        extra={extraControls} 
-      >
-        <Spin 
-          spinning={loading} 
-          indicator={<DotLoader color="#1890ff" size={40} />}
-        >
-          <ReactECharts 
-            option={areaUsageOption} 
-            notMerge={true}
-            style={{ height: "620px", width: "100%" }} 
-          />
+      <Card title="Area Usage" variant="borderless" style={{ marginTop: '5px' }} extra={extraControls}>
+        <Spin spinning={loading} indicator={<DotLoader color="#1890ff" size={40} />}>
+          <ReactECharts option={areaUsageOption} notMerge={true} style={{ height: "620px", width: "100%" }} />
         </Spin>
       </Card>
     </div>
